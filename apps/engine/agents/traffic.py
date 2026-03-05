@@ -34,8 +34,10 @@ class TrafficAgent(BaseAgent):
              return {"upload_status": "failed", "reason": "safety_violation"}
 
         # 2. Simulate Network Upload via Distribution Channel
-        from apps.engine.core.distribution import MockTikTokChannel
-        channel = MockTikTokChannel()
+        from apps.engine.core.distribution import get_tiktok_channel
+        db = context.get("db")
+        user_id = context.get("user_id")
+        channel = get_tiktok_channel(db=db, user_id=user_id)
         
         result = channel.upload_content({"title": title, "description": description})
         

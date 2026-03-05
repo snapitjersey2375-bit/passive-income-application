@@ -112,6 +112,31 @@ export default function SettingsPage() {
         return connections.some(c => c.platform === platform && c.is_active);
     };
 
+    const handleManualConnect = async (platform: string, token: string) => {
+        setConnectingPlatform(platform);
+        try {
+            const res = await fetch(`${API_URL}/social/connect/manual`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    platform,
+                    access_token: token,
+                    account_name: `@manual_${platform}`
+                })
+            });
+            if (res.ok) {
+                setMessage({ type: "success", text: `Manually connected to ${platform}!` });
+                fetchConnections();
+            } else {
+                throw new Error("Failed to connect manually");
+            }
+        } catch (error: any) {
+            setMessage({ type: "error", text: error.message });
+        } finally {
+            setConnectingPlatform(null);
+        }
+    };
+
     const getConnection = (platform: string) => {
         return connections.find(c => c.platform === platform && c.is_active);
     };
@@ -260,20 +285,33 @@ export default function SettingsPage() {
                                                 )}
                                             </button>
                                         ) : (
-                                            <button
-                                                onClick={() => handleConnect(platform.id)}
-                                                disabled={isLoading}
-                                                className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
-                                            >
-                                                {isLoading ? (
-                                                    <Loader2 size={16} className="animate-spin" />
-                                                ) : (
-                                                    <>
-                                                        <Link2 size={14} />
-                                                        Connect
-                                                    </>
-                                                )}
-                                            </button>
+                                            <div className="space-y-2">
+                                                <button
+                                                    onClick={() => handleConnect(platform.id)}
+                                                    disabled={isLoading}
+                                                    className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all disabled:opacity-50"
+                                                >
+                                                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Link2 size={14} /> Mock Connect</>}
+                                                </button>
+                                                <div className="h-px bg-gray-200 my-2" />
+                                                <div className="flex gap-1">
+                                                    <input
+                                                        type="password"
+                                                        placeholder="API Token"
+                                                        id={`token-${platform.id}`}
+                                                        className="flex-1 text-xs p-2 border border-gray-200 rounded lg focus:ring-1 focus:ring-blue-500 outline-none"
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            const input = document.getElementById(`token-${platform.id}`) as HTMLInputElement;
+                                                            if (input.value) handleManualConnect(platform.id, input.value);
+                                                        }}
+                                                        className="p-2 bg-gray-800 text-white rounded-lg hover:bg-black transition"
+                                                    >
+                                                        <Save size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 );

@@ -33,14 +33,35 @@ class PublisherAgent(BaseAgent):
                 self.log(f"⚠️ Content {content_id} is not approved (status: {content.status})")
                 return {"status": "error", "reason": f"Content must be approved first (current: {content.status})"}
             
-            # --- NEW WORKFLOW: Asset Download ---
-            # Bypass actual API connections for now. Return a direct download URL.
+            # --- NEW WORKFLOW: Asset Download & Auto-Publish ---
+            from apps.engine.core.distribution import get_tiktok_channel
             
-            # Update content status
+            # Check if we have a real channel for any platform
+            # For now, we only have TikTok
+            channel = get_tiktok_channel(db=session, user_id=user_id)
+            
+            # If it's a real channel, try to upload
+            if not isinstance(channel, (lambda: None).__class__): # check if it's not a lambda or mock
+                from apps.engine.core.distribution import MockTikTokChannel
+                if not isinstance(channel, MockTikTokChannel):
+                    self.log(f"🎬 Auto-publishing '{content.title}' to TikTok...")
+                    result = channel.upload_content({"title": content.title, "description": content.description})
+                    if result.get("status") == "live":
+                        content.distribution_status = "live"
+                        content.status = "uploaded"
+                        session.commit()
+                        return {
+                            "status": "success",
+                            "published_to": ["tiktok"],
+                            "content_id": content_id,
+                            "distribution_status": "live",
+                            "url": result.get("url"),
+                            "message": "Content successfully published to TikTok!"
+                        }
+
+            # Fallback to manual download status
             content.distribution_status = "live"
             content.status = "uploaded"
-            
-            # No platform fee in download mode to save complexity
             session.commit()
             
             self.log(f"🚀 Asset prepared for manual download: '{content.title}'")

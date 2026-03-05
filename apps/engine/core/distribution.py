@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any
 import time
 import random
+import os
 
 class DistributionChannel(ABC):
     @abstractmethod
@@ -47,3 +48,54 @@ class MockTikTokChannel(DistributionChannel):
             "likes": 0,
             "shares": 0
         }
+
+def get_tiktok_channel(db=None, user_id=None) -> DistributionChannel:
+    """
+    Factory function to return the appropriate TikTok channel.
+    Retrieves tokens from DB if user_id is provided.
+    """
+    from apps.engine.core.channels.tiktok import RealTikTokChannel
+    from apps.engine.db.models import SocialConnection
+    from apps.engine.core.security import decrypt_token
+    
+    token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    biz_id = os.getenv("TIKTOK_BUSINESS_ID")
+
+    if db and user_id:
+        conn = db.query(SocialConnection).filter(
+            SocialConnection.user_id == user_id,
+            SocialConnection.platform == "tiktok",
+            SocialConnection.is_active == True
+        ).first()
+        if conn and conn.access_token:
+            token = decrypt_token(conn.access_token)
+            biz_id = conn.account_id # Assuming account_id stores business_id
+
+    if token:
+        return RealTikTokChannel(access_token=token, business_id=biz_id)
+    return MockTikTokChannel()
+
+def get_shopify_channel(db=None, user_id=None) -> DistributionChannel:
+    """
+    Factory function to return the appropriate Shopify channel.
+    """
+    from apps.engine.core.channels.shopify import RealShopifyChannel
+    from apps.engine.db.models import SocialConnection
+    from apps.engine.core.security import decrypt_token
+
+    token = os.getenv("SHOPIFY_ACCESS_TOKEN")
+    shop_url = os.getenv("SHOPIFY_SHOP_URL")
+
+    if db and user_id:
+        conn = db.query(SocialConnection).filter(
+            SocialConnection.user_id == user_id,
+            SocialConnection.platform == "shopify",
+            SocialConnection.is_active == True
+        ).first()
+        if conn and conn.access_token:
+            token = decrypt_token(conn.access_token)
+            shop_url = conn.account_name # For Shopify, we might store the domain in account_name
+
+    if token:
+        return RealShopifyChannel(shop_url=shop_url, access_token=token)
+    return MockTikTokChannel() # Use mock for now as fallback

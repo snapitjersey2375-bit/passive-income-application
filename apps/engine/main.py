@@ -103,7 +103,9 @@ async def approve_content(content_id: str, db: Session = Depends(get_db)):
             agent.run({
                 "title": content.title,
                 "description": content.description,
-                "content_id": content.id
+                "content_id": content.id,
+                "user_id": user.id,
+                "db": db
             }), 
             timeout=60.0
         )
@@ -640,11 +642,12 @@ def connect_social_account(platform: str, db: Session = Depends(get_db)):
         return {"status": "reactivated", "platform": platform}
     
     # Create mock connection
+    from apps.engine.core.security import encrypt_token
     import uuid
     connection = SocialConnection(
         user_id=user.id,
         platform=platform,
-        access_token=f"mock_token_{uuid.uuid4().hex[:16]}",
+        access_token=encrypt_token(f"mock_token_{uuid.uuid4().hex[:16]}"),
         refresh_token=f"mock_refresh_{uuid.uuid4().hex[:16]}",
         account_name=f"@{user.email.split('@')[0]}_{platform}",
         account_id=f"{platform}_{uuid.uuid4().hex[:8]}",
@@ -658,6 +661,41 @@ def connect_social_account(platform: str, db: Session = Depends(get_db)):
         "platform": platform,
         "account_name": connection.account_name
     }
+
+@app.post("/social/connect/manual")
+def connect_social_account_manual(payload: SocialConnectManual, db: Session = Depends(get_db)):
+    """
+    Manually connects a social account with a provided token.
+    """
+    user = get_current_user(db)
+    from apps.engine.core.security import encrypt_token
+    
+    # Check for existing
+    existing = db.query(SocialConnection).filter(
+        SocialConnection.user_id == user.id,
+        SocialConnection.platform == payload.platform
+    ).first()
+    
+    if existing:
+        existing.access_token = encrypt_token(payload.access_token)
+        existing.refresh_token = payload.refresh_token
+        existing.account_name = payload.account_name or existing.account_name
+        existing.account_id = payload.account_id or existing.account_id
+        existing.is_active = True
+    else:
+        connection = SocialConnection(
+            user_id=user.id,
+            platform=payload.platform,
+            access_token=encrypt_token(payload.access_token),
+            refresh_token=payload.refresh_token,
+            account_name=payload.account_name or f"Manual_{payload.platform}",
+            account_id=payload.account_id,
+            is_active=True
+        )
+        db.add(connection)
+    
+    db.commit()
+    return {"status": "success", "platform": payload.platform}
 
 @app.delete("/social/disconnect/{platform}")
 def disconnect_social_account(platform: str, db: Session = Depends(get_db)):

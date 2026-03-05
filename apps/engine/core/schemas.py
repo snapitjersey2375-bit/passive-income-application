@@ -33,3 +33,10 @@ class ContentSchema(ContentBase):
 
     class Config:
         from_attributes = True
+
+class SocialConnectManual(BaseModel):
+    platform: str
+    access_token: str
+    refresh_token: Optional[str] = None
+    account_name: Optional[str] = None
+    account_id: Optional[str] = None
