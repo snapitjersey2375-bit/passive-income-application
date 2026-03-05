@@ -1,0 +1,25 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for caching
+COPY apps/engine/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# Copy the entire engine app
+COPY apps/engine /app/apps/engine
+
+# Set python path
+ENV PYTHONPATH=/app
+
+# Expose port
+EXPOSE 8000
+
+# Run with Gunicorn for production performance
+# 4 workers is a good default for most cloud instances
+CMD ["gunicorn", "apps.engine.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

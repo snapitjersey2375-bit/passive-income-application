@@ -1,0 +1,35 @@
+services:
+  engine:
+    build:
+      context: .
+      dockerfile: apps/engine/Dockerfile.prod
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./nexusflow.db}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - nexus-net
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://engine:8000}
+    depends_on:
+      - engine
+    networks:
+      - nexus-net
+    restart: unless-stopped
+
+networks:
+  nexus-net:
+    driver: bridge

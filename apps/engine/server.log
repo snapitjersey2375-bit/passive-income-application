@@ -1,0 +1,15 @@
+INFO:     Started server process [34583]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:60927 - "POST /waitlist/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60934 - "POST /waitlist/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60936 - "GET /waitlist/status/test%40example.com HTTP/1.1" 200 OK
+[GENESIS] Granting seed capital to dipali@nexusflow.ai
+INFO:     127.0.0.1:60974 - "GET /user/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60977 - "GET /user/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60978 - "GET /social/connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61011 - "GET /user/settings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61012 - "GET /social/connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61216 - "GET /social/connections HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61215 - "GET /user/settings HTTP/1.1" 200 OK

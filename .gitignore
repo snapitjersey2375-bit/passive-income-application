@@ -1,0 +1,29 @@
+node_modules
+.next
+dist
+.env
+.env.local
+.DS_Store
+**/.DS_Store
+coverage
+.turbo
+build
+__pycache__
+*.pyc
+.venv
+venv
+
+# Local database
+*.db
+
+# Verification & test scripts (local dev only)
+verify_*.py
+test_*.py
+verify_concurrency.py
+
+# Local reports and audit files
+financial_audit.md
+financial_audit_report.md
+financial_flaw_report.md
+implementation_plan.md
+verification_result.txt
