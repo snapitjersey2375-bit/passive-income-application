@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Dict
 import asyncio
+import os
 
 from apps.engine.core.circuit_breaker import CircuitBreaker
 from apps.engine.db.session import get_db
@@ -27,10 +28,14 @@ def get_current_user(db: Session):
         db.refresh(user)
     return user
 
-# Allow CORS
+# Allow CORS — restrict to specific origins in production via ALLOWED_ORIGINS env var
+# Example (Railway): ALLOWED_ORIGINS=https://your-app.vercel.app
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",")] if _raw_origins != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
