@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test Automation</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #fff;
+        }
+        .test-container {
+            background: #1a1a1a;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        h1 { color: #00ff88; margin-bottom: 10px; }
+        .status { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        .success { background: #004d00; border: 1px solid #00ff00; }
+        .error { background: #4d0000; border: 1px solid #ff0000; }
+        .pending { background: #4d4d00; border: 1px solid #ffff00; }
+        button {
+            background: #00ff88;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #00dd77; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        .results { margin-top: 20px; }
+        .test-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #2a2a2a;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .pass { border-left: 4px solid #00ff00; }
+        .fail { border-left: 4px solid #ff0000; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔐 Login Test Suite</h1>
+        <p>This will test the login flow 10 times to verify it works consistently.</p>
+        
+        <div class="status pending" id="status">
+            Ready to start testing. Click "Run Tests" below.
+        </div>
+
+        <button onclick="runTests()" id="startBtn">Run 10 Login Tests</button>
+        <button onclick="clearResults()" id="clearBtn">Clear Results</button>
+
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        let testCount = 0;
+        const totalTests = 10;
+
+        async function runTests() {
+            const startBtn = document.getElementById('startBtn');
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            
+            startBtn.disabled = true;
+            results.innerHTML = '';
+            testCount = 0;
+
+            status.className = 'status pending';
+            status.textContent = 'Running tests...';
+
+            for (let i = 1; i <= totalTests; i++) {
+                await runSingleTest(i);
+                await sleep(2000); // Wait 2 seconds between tests
+            }
+
+            status.className = 'status success';
+            status.textContent = `✅ Completed ${testCount}/${totalTests} tests successfully!`;
+            startBtn.disabled = false;
+        }
+
+        async function runSingleTest(testNum) {
+            const results = document.getElementById('results');
+            const testItem = document.createElement('div');
+            testItem.className = 'test-item';
+            testItem.innerHTML = `<span>Test ${testNum}/10</span><span>Running...</span>`;
+            results.appendChild(testItem);
+
+            try {
+                // Test 1: Login API call
+                const response = await fetch('http://127.0.0.1:8000/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'dipali@nexusflow.ai',
+                        password: 'password'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API returned ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (!data.token || !data.user_id) {
+                    throw new Error('Missing token or user_id in response');
+                }
+
+                // Test 2: Store in localStorage (simulating login)
+                localStorage.setItem('nexus_token', data.token);
+                localStorage.setItem('nexus_user', JSON.stringify({
+                    id: data.user_id,
+                    email: 'dipali@nexusflow.ai',
+                    risk_tolerance: 0.7,
+                    is_grandma_mode: false
+                }));
+
+                // Test 3: Verify storage
+                const storedToken = localStorage.getItem('nexus_token');
+                const storedUser = localStorage.getItem('nexus_user');
+                
+                if (!storedToken || !storedUser) {
+                    throw new Error('Failed to store auth data');
+                }
+
+                testItem.className = 'test-item pass';
+                testItem.innerHTML = `<span>Test ${testNum}/10</span><span>✅ PASS - Token: ${data.token.substring(0, 20)}...</span>`;
+                testCount++;
+
+            } catch (error) {
+                testItem.className = 'test-item fail';
+                testItem.innerHTML = `<span>Test ${testNum}/10</span><span>❌ FAIL - ${error.message}</span>`;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('status').className = 'status pending';
+            document.getElementById('status').textContent = 'Ready to start testing. Click "Run Tests" below.';
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Auto-run on load if URL has ?autorun=true
+        if (window.location.search.includes('autorun=true')) {
+            window.onload = () => runTests();
+        }
+    </script>
+</body>
+</html>
