@@ -91,7 +91,16 @@ export default function DashboardPage() {
 
     const fetchSettings = async () => {
         try {
-            const res = await fetch(`${API_URL}/user/settings`);
+            const token = localStorage.getItem("nexus_token");
+            const res = await fetch(`${API_URL}/user/settings`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setSettings(data);
@@ -103,7 +112,16 @@ export default function DashboardPage() {
 
     const fetchAnalytics = async () => {
         try {
-            const res = await fetch(`${API_URL}/analytics/stats`);
+            const token = localStorage.getItem("nexus_token");
+            const res = await fetch(`${API_URL}/analytics/stats`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setAnalytics(data);
@@ -118,16 +136,24 @@ export default function DashboardPage() {
         setSettings((prev: any) => ({ ...prev, ...newSettings }));
 
         try {
+            const token = localStorage.getItem("nexus_token");
             const res = await fetch(`${API_URL}/user/settings`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({
-                    risk_tolerance: settings?.risk_tolerance || 0.5,
-                    is_grandma_mode: settings?.is_grandma_mode || false,
-                    persona: settings?.persona || "grandma",
+                    risk_tolerance: newSettings?.risk_tolerance ?? settings?.risk_tolerance ?? 0.5,
+                    is_grandma_mode: newSettings?.is_grandma_mode ?? settings?.is_grandma_mode ?? false,
+                    persona: newSettings?.persona ?? settings?.persona ?? "grandma",
                     ...newSettings
                 })
             });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (!res.ok) throw new Error("Update failed");
             success("System Reconfigured");
         } catch (err: any) {
@@ -141,11 +167,20 @@ export default function DashboardPage() {
     const fetchQueue = async () => {
         setIsLoading(true);
         try {
+            const token = localStorage.getItem("nexus_token");
             const endpoint = searchQuery
                 ? `${API_URL}/content/search?q=${encodeURIComponent(searchQuery)}`
                 : `${API_URL}/queue/daily`;
 
-            const res = await fetch(endpoint);
+            const res = await fetch(endpoint, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             const data = await res.json();
             setCards(searchQuery ? data.results : data.queue || []);
         } catch (error) {
@@ -174,10 +209,16 @@ export default function DashboardPage() {
         setCards(newCards);
 
         try {
+            const token = localStorage.getItem("nexus_token");
             if (direction === "right") {
                 setStreak((s) => s + 1);
                 // Blocking wait to catch errors
-                const res = await fetch(`${API_URL}/queue/${currentCard.id}/approve`, { method: "POST" });
+                const res = await fetch(`${API_URL}/queue/${currentCard.id}/approve`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
                 if (!res.ok) {
                     if (res.status === 402) {
                         setShowBrokeModal(true);
@@ -192,7 +233,12 @@ export default function DashboardPage() {
                 success(isGrandmaMode ? "That's lovely, dear! It's official! 🧶" : "Content Approved! 🚀");
             } else {
                 setStreak(0);
-                const res = await fetch(`${API_URL}/queue/${currentCard.id}/reject`, { method: "POST" });
+                const res = await fetch(`${API_URL}/queue/${currentCard.id}/reject`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
                 if (!res.ok) {
                     throw new Error("Rejection Failed");
                 }
@@ -241,7 +287,13 @@ export default function DashboardPage() {
         setIsLoading(true);
         // Trigger Swarm with selected topic
         try {
-            const res = await fetch(`${API_URL}/content/swarm?niche=${selectedTopic}`, { method: "POST" });
+            const token = localStorage.getItem("nexus_token");
+            const res = await fetch(`${API_URL}/content/swarm?niche=${selectedTopic}`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
             if (!res.ok) {
                 const data = await res.json();
                 throw new Error(data.detail || "Generation failed");
@@ -258,9 +310,13 @@ export default function DashboardPage() {
 
     const handleSaveRemix = async (id: string, newTitle: string, newDesc: string) => {
         try {
+            const token = localStorage.getItem("nexus_token");
             const res = await fetch(`${API_URL}/content/${id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({ title: newTitle, description: newDesc })
             });
             if (!res.ok) throw new Error("Failed to save changes");
@@ -276,7 +332,13 @@ export default function DashboardPage() {
     const handleSimulate = async () => {
         setIsLoading(true);
         try {
-            await fetch(`${API_URL}/analytics/simulate`, { method: "POST" });
+            const token = localStorage.getItem("nexus_token");
+            await fetch(`${API_URL}/analytics/simulate`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
             await fetchAnalytics();
         } catch (error) {
             console.error("Simulation failed:", error);
@@ -287,12 +349,22 @@ export default function DashboardPage() {
     const requestAdditionalBudget = async () => {
         setIsRequestingBudget(true);
         try {
-            const res = await fetch(`${API_URL}/user/capital/inject`, { method: "POST" });
+            const token = localStorage.getItem("nexus_token");
+            const res = await fetch(`${API_URL}/user/capital/inject`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
             if (!res.ok) throw new Error("Injection failed");
             success(isGrandmaMode ? "Here is some pocket money, dear! 🍬" : "Capital Injection Successful! +$50");
             setShowBrokeModal(false);
             // Refresh settings to see new balance
-            const settingsRes = await fetch(`${API_URL}/user/settings`);
+            const settingsRes = await fetch(`${API_URL}/user/settings`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
             if (settingsRes.ok) {
                 const settingsData = await settingsRes.json();
                 setSettings(settingsData);

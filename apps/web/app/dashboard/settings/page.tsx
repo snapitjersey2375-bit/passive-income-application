@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { DashboardShell } from "@repo/ui";
 import { Shield, Monitor, Key, Save, AlertCircle, Link2, Unlink, CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/use-auth";
 
 interface SocialConnection {
     id: string;
@@ -27,6 +28,7 @@ export default function SettingsPage() {
     const [connections, setConnections] = useState<SocialConnection[]>([]);
     const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
 
+    const { user, logout, requireAuth } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
@@ -35,14 +37,26 @@ export default function SettingsPage() {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
     useEffect(() => {
-        fetchSettings();
-        fetchConnections();
-    }, []);
+        requireAuth();
+        if (user) {
+            fetchSettings();
+            fetchConnections();
+        }
+    }, [user]);
 
     const fetchSettings = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_URL}/user/settings`);
+            const token = localStorage.getItem("nexus_token");
+            const res = await fetch(`${API_URL}/user/settings`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setRiskTolerance(data.risk_tolerance);
@@ -59,7 +73,16 @@ export default function SettingsPage() {
 
     const fetchConnections = async () => {
         try {
-            const res = await fetch(`${API_URL}/social/connections`);
+            const token = localStorage.getItem("nexus_token");
+            const res = await fetch(`${API_URL}/social/connections`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setConnections(data.connections || []);
@@ -72,9 +95,17 @@ export default function SettingsPage() {
     const handleConnect = async (platform: string) => {
         setConnectingPlatform(platform);
         try {
+            const token = localStorage.getItem("nexus_token");
             const res = await fetch(`${API_URL}/social/connect/${platform}`, {
-                method: "POST"
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
             });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setMessage({ type: "success", text: `Connected to ${platform}! Account: ${data.account_name}` });
@@ -92,9 +123,17 @@ export default function SettingsPage() {
     const handleDisconnect = async (platform: string) => {
         setConnectingPlatform(platform);
         try {
+            const token = localStorage.getItem("nexus_token");
             const res = await fetch(`${API_URL}/social/disconnect/${platform}`, {
-                method: "DELETE"
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
             });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 setMessage({ type: "success", text: `Disconnected from ${platform}` });
                 fetchConnections();
@@ -112,18 +151,26 @@ export default function SettingsPage() {
         return connections.some(c => c.platform === platform && c.is_active);
     };
 
-    const handleManualConnect = async (platform: string, token: string) => {
+    const handleManualConnect = async (platform: string, tokenData: string) => {
         setConnectingPlatform(platform);
         try {
+            const token = localStorage.getItem("nexus_token");
             const res = await fetch(`${API_URL}/social/connect/manual`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     platform,
-                    access_token: token,
+                    access_token: tokenData,
                     account_name: `@manual_${platform}`
                 })
             });
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 setMessage({ type: "success", text: `Manually connected to ${platform}!` });
                 fetchConnections();
@@ -144,21 +191,32 @@ export default function SettingsPage() {
     const handleClaimReferral = async () => {
         setIsClaiming(true);
         try {
-            const storedUserId = localStorage.getItem("nexus_user_id");
+            const storedUser = localStorage.getItem("nexus_user");
+            const token = localStorage.getItem("nexus_token");
 
-            if (!storedUserId) {
-                setMessage({ type: "error", text: "User ID not found. Please relogin." });
+            if (!storedUser || !token) {
+                setMessage({ type: "error", text: "Session info not found. Please relogin." });
                 return;
             }
 
+            const user = JSON.parse(storedUser);
+
             const res = await fetch(`${API_URL}/user/referral/claim`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({
-                    user_id: storedUserId,
+                    user_id: user.id,
                     code: referralInput
                 }),
             });
+
+            if (res.status === 401) {
+                logout();
+                return;
+            }
 
             if (res.ok) {
                 const data = await res.json();
@@ -179,15 +237,23 @@ export default function SettingsPage() {
         setIsSaving(true);
         setMessage({ type: "", text: "" });
         try {
+            const token = localStorage.getItem("nexus_token");
             const res = await fetch(`${API_URL}/user/settings`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     risk_tolerance: riskTolerance,
                     is_grandma_mode: isGrandmaMode
                 }),
             });
 
+            if (res.status === 401) {
+                logout();
+                return;
+            }
             if (res.ok) {
                 setMessage({ type: "success", text: "Settings saved successfully!" });
                 setTimeout(() => setMessage({ type: "", text: "" }), 3000);

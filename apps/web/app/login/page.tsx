@@ -11,36 +11,43 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
 
-    interface LoginResponse {
-        user: any;
-        access_token: string;
-    }
+    const [isSignup, setIsSignup] = useState(false);
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError("");
 
         try {
             const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-            const res = await fetch(`${API_URL}/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email.trim(), password: password.trim() }),
-            });
+            const endpoint = isSignup ? "/auth/signup" : "/auth/login";
+
+            // Login uses FormData for OAuth2PasswordRequestForm compatibility
+            // Signup uses JSON
+            let res;
+            if (isSignup) {
+                res = await fetch(`${API_URL}${endpoint}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
+                    method: "POST"
+                });
+            } else {
+                const formData = new FormData();
+                formData.append("username", email.trim());
+                formData.append("password", password.trim());
+
+                res = await fetch(`${API_URL}${endpoint}`, {
+                    method: "POST",
+                    body: formData,
+                });
+            }
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.detail || "Login failed");
+                throw new Error(data.detail || "Authentication failed");
             }
 
             const data = await res.json();
-            login({
-                id: data.user_id,
-                email: email.trim(),
-                risk_tolerance: 0.7,
-                is_grandma_mode: false
-            }, data.token);
+            // Backend now returns { access_token, user: { id, email, ... } }
+            login(data.user, data.access_token);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -72,7 +79,7 @@ export default function LoginPage() {
                         </p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form onSubmit={handleAuth} className="space-y-4">
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-zinc-400 ml-1">Email Address</label>
                             <input
@@ -112,7 +119,15 @@ export default function LoginPage() {
                             disabled={isLoading}
                             className="w-full py-3.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
                         >
-                            {isLoading ? "Authenticating..." : "Enter Workspace"}
+                            {isLoading ? "Authenticating..." : isSignup ? "Create Account" : "Enter Workspace"}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsSignup(!isSignup)}
+                            className="w-full text-zinc-500 text-xs hover:text-white transition-colors py-2"
+                        >
+                            {isSignup ? "Already have an account? Log in" : "Don't have an account? Sign up"}
                         </button>
                     </form>
 

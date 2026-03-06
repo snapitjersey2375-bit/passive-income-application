@@ -1,0 +1,136 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deary, have you seen this? The Future of Crypto Trading</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Outfit', sans-serif; }
+        .container { position: relative; width: 100%; height: 100%; overflow: hidden; }
+        
+        .scene {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            display: flex;
+            align-items: center; justify-content: center;
+        }
+        
+        .scene.active { opacity: 1; z-index: 10; }
+        
+        .bg-image {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0.5;
+            animation: kenburns 30s infinite alternate;
+        }
+        
+        @keyframes kenburns {
+            0% { transform: scale(1) translate(0,0); }
+            100% { transform: scale(1.3) translate(2%, 2%); }
+        }
+        
+        .content {
+            position: relative;
+            z-index: 20;
+            color: white;
+            text-align: center;
+            max-width: 800px;
+            padding: 40px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        
+        h1 { font-size: 3.5rem; margin-bottom: 20px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+        p { font-size: 1.8rem; line-height: 1.6; color: #ccc; }
+        
+        .progress-container {
+            position: absolute;
+            bottom: 30px; left: 50%; translate: -50% 0;
+            width: 80%; height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px; overflow: hidden;
+            z-index: 100;
+        }
+        
+        .progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.1s linear;
+        }
+        
+        .time-display {
+            position: absolute;
+            bottom: 50px; left: 50%; translate: -50% 0;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem; letter-spacing: 2px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="video-container"></div>
+    <div class="time-display" id="time-display">00:00 / 03:00</div>
+    <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <script>
+        const scenes = [{"title": "Deary, have you seen this? The Future of Crypto Trading", "body": "Predictions for Crypto Trading in 2026 based on new data.", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop&keyword=cryptocurrency"}, {"title": "The AI Advantage", "body": "How AI Automation is being disrupted by autonomous agents.", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop&keyword=cryptocurrency"}, {"title": "Monetization Path", "body": "Setting up the funnel: Ads, Referrals, and Scale.", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop&keyword=cryptocurrency"}, {"title": "The Verdict", "body": "Why this strategy in AI Automation is a 2026 game-changer.", "image": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop&keyword=cryptocurrency"}];
+        const totalDuration = 180; // seconds
+        const container = document.getElementById('video-container');
+        const progressBar = document.getElementById('progress-bar');
+        const timeDisplay = document.getElementById('time-display');
+        
+        // Build Scenes
+        scenes.forEach((s, i) => {
+            const div = document.createElement('div');
+            div.className = 'scene' + (i === 0 ? ' active' : '');
+            div.innerHTML = `
+                <div class="bg-image" style="background-image: url('${s.image}')"></div>
+                <div class="content">
+                    <h1>${s.title}</h1>
+                    <p>${s.body}</p>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        let startTime = Date.now();
+        const sceneElements = document.querySelectorAll('.scene');
+        
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        }
+
+        function update() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const progress = Math.min(elapsed / totalDuration, 1);
+            
+            progressBar.style.width = (progress * 100) + '%';
+            timeDisplay.innerText = `${formatTime(elapsed)} / ${formatTime(totalDuration)}`;
+            
+            // Switch Scenes
+            const currentSceneIndex = Math.floor(progress * (scenes.length - 0.001));
+            sceneElements.forEach((el, i) => {
+                el.classList.toggle('active', i === currentSceneIndex);
+            });
+            
+            if (progress < 1) requestAnimationFrame(update);
+        }
+        
+        requestAnimationFrame(update);
+    </script>
+</body>
+</html>
+        
