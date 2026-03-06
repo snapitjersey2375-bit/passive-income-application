@@ -16,6 +16,8 @@ class TrafficAgent(BaseAgent):
         """
         Checks for Brand Safety.
         """
+        title = title or ""
+        description = description or ""
         text = (title + " " + description).lower()
         for word in self.blocked_keywords:
             if word in text:
@@ -43,6 +45,17 @@ class TrafficAgent(BaseAgent):
         
         if result["status"] == "failed":
             return {"upload_status": "failed", "reason": result.get("error", "unknown")}
+
+        # 3. Persist Platform Metadata
+        content_id = context.get("content_id")
+        if db and content_id:
+            from apps.engine.db.models import Content
+            content = db.query(Content).filter(Content.id == content_id).first()
+            if content:
+                content.platform_id = result["platform_id"]
+                content.platform_url = result["url"]
+                content.distribution_status = "live"
+                db.commit()
 
         return {
             "upload_status": "success",
@@ -129,16 +142,29 @@ class TrafficAgent(BaseAgent):
         ctr = 0.05 * quality_score # 5% baseline * quality
         new_views = int(new_impressions * ctr)
         
-        # Engagement
-        new_likes = int(new_views * 0.15)
-        new_shares = int(new_views * 0.02)
+        # 3. Update Distribution Layer
+        from apps.engine.core.distribution import get_tiktok_channel
+        channel = get_tiktok_channel(db, user.id)
         
-        # Update Stats
-        content.view_count += new_views
-        content.like_count += new_likes
-        content.share_count += new_shares
-        
-        # 3. Revenue (CPM Model)
+        # Sync only if we have a platform ID
+        if content.platform_id:
+            # If the channel is stateful (Mock), report the results
+            if hasattr(channel, "update_metrics"):
+                channel.update_metrics(content.platform_id, new_views)
+            
+            # 4. Sync Database from Distribution Source (Ground Truth)
+            metrics = channel.get_metrics(content.platform_id)
+            if metrics:
+                content.view_count = metrics.get("views", content.view_count)
+                content.like_count = metrics.get("likes", content.like_count)
+                content.share_count = metrics.get("shares", content.share_count)
+        else:
+            # Fallback for content not (yet) uploaded via this agent
+            content.view_count += new_views
+            content.like_count += int(new_views * 0.15)
+            content.share_count += int(new_views * 0.02)
+
+        # 5. Revenue (CPM Model)
         cpm_rate = 1.50 # $1.50 per 1,000 views
         revenue = (new_views / 1000.0) * cpm_rate
         

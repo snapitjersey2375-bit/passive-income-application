@@ -10,3 +10,5 @@ duckduckgo-search==5.0.0
 shopify-python-api==12.4.0
 requests==2.31.0
 cryptography==42.0.5
+bcrypt==4.1.2
+python-jose[cryptography]==3.3.0

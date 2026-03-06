@@ -49,6 +49,8 @@ class Content(Base):
     # Metadata
     confidence_score = Column(Float, default=0.0)
     platform = Column(String, default="tiktok")
+    platform_id = Column(String, nullable=True)
+    platform_url = Column(String, nullable=True)
     
     # Statistics
     view_count = Column(Integer, default=0)

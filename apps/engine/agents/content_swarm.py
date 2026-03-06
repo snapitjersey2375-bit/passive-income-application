@@ -69,17 +69,28 @@ class ContentSwarm(BaseAgent):
             "description": idea["description"]
         })
         
-        # 4. Visualization Step
+        # 4. Visualization Step - Requesting multiple images for scenes
+        scene_count = 4
         viz_result = await self.visualizer.run({
             "title": idea["title"],
-            "niche": niche
+            "niche": niche,
+            "count": scene_count
         })
+        scene_images = viz_result.get("urls", [viz_result.get("thumbnail_url")] * scene_count)
 
-        # 5. Video Generation Step (HTML5)
+        # 5. Video Generation Step (HTML5) - Enhanced with unique visuals per scene
+        scenes = [
+            {"title": idea["title"], "body": idea["description"], "image": scene_images[0]},
+            {"title": "The AI Advantage", "body": f"How {niche} is being disrupted by autonomous agents.", "image": scene_images[1]},
+            {"title": "Monetization Path", "body": "Setting up the funnel: Ads, Referrals, and Scale.", "image": scene_images[2]},
+            {"title": "The Verdict", "body": f"Why this strategy in {niche} is a 2026 game-changer.", "image": scene_images[3]}
+        ]
+        
         video_result = await self.video_gen.run({
             "title": idea["title"],
             "description": idea["description"],
-            "image_url": viz_result["thumbnail_url"]
+            "scenes": scenes,
+            "duration": 180 # 3 Minutes
         })
         
         # Persist to DB & Enforce Policy
@@ -106,7 +117,7 @@ class ContentSwarm(BaseAgent):
                 description=idea["description"],
                 confidence_score=idea["confidence_score"],
                 status=final_status,
-                thumbnail_url=viz_result["thumbnail_url"],
+                thumbnail_url=scene_images[0],
                 video_url=video_result["video_url"], # HTML5 Video URL
                 platform="tiktok",
                 # Niche Partitioning Fields

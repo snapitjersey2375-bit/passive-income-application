@@ -25,29 +25,44 @@ class MockTikTokChannel(DistributionChannel):
     """
     Simulates a high-fidelity TikTok API integration.
     """
+    # Class-level state to persist across instances during the session
+    mock_db = {} 
+
     def upload_content(self, content_data: Dict[str, Any]) -> Dict[str, Any]:
-        # Simulate network latency
-        # time.sleep(0.5) 
-        
         # 95% Success Rate
         if random.random() < 0.05:
             return {"status": "failed", "error": "API Timeout"}
             
         post_id = f"tt_{int(time.time())}_{random.randint(1000,9999)}"
+        
+        # Initialize Metrics in Mock DB
+        self.mock_db[post_id] = {
+            "views": 0,
+            "likes": 0,
+            "shares": 0,
+            "created_at": time.time()
+        }
+
         return {
-            "status": "live", # In reality this would be 'processing' first
+            "status": "live",
             "platform_id": post_id,
             "url": f"https://www.tiktok.com/@antigravity/video/{post_id}"
         }
 
     def get_metrics(self, platform_id: str) -> Dict[str, float]:
-        # Simulate organic growth curve based on "Quality Score" (hidden variable)
-        # For now, we return a base set.
-        return {
-            "views": 0,
-            "likes": 0,
-            "shares": 0
-        }
+        """
+        Returns metrics from the stateful mock database.
+        """
+        return self.mock_db.get(platform_id, {"views": 0, "likes": 0, "shares": 0})
+
+    def update_metrics(self, platform_id: str, new_views: int):
+        """
+        Simulates platform-side metric updates.
+        """
+        if platform_id in self.mock_db:
+            self.mock_db[platform_id]["views"] += new_views
+            self.mock_db[platform_id]["likes"] += int(new_views * 0.1) # 10% engagement
+            self.mock_db[platform_id]["shares"] += int(new_views * 0.01) # 1% shares
 
 def get_tiktok_channel(db=None, user_id=None) -> DistributionChannel:
     """

@@ -17,6 +17,17 @@ class LedgerService:
         if not user:
             raise ValueError(f"User {user_id} not found")
 
+        # 2. Shadow Ban Enforcement: Silently ignore income (positive amount)
+        if user.is_shadow_banned and amount > 0:
+            # We return a dummy Ledger object to satisfy callers, 
+            # but we don't ADD it to the session.
+            return Ledger(
+                user_id=user_id,
+                amount=amount,
+                description=f"(SILENCED) {description}",
+                transaction_type=transaction_type
+            )
+
         entry = Ledger(
             user_id=user_id,
             amount=amount,

@@ -1,31 +1,51 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Dict
+from pydantic import BaseModel
 import asyncio
 import os
 
 from apps.engine.core.circuit_breaker import CircuitBreaker
 from apps.engine.db.session import get_db
 from apps.engine.db.models import Content, User, Ledger, AnalyticsHistory, SocialConnection
-from apps.engine.core.schemas import ContentSchema
+from apps.engine.core.schemas import ContentSchema, SocialConnectManual
 from apps.engine.core.log_store import log_store
+from apps.engine.core.auth import verify_password, get_password_hash, create_access_token, decode_access_token
 
 app = FastAPI(title="NexusFlow Engine", version="0.2.2")
 
-def get_current_user(db: Session):
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     """
-    Helper to get the current user. In a real app, this would use JWT tokens.
-    For this prototype, it defaults to the main testing account.
+    Retrieves the current user by decoding the JWT token.
     """
-    user = db.query(User).filter(User.email == "dipali@nexusflow.ai").first()
-    if not user:
-        # Auto-create if missing (e.g. after DB reset)
-        user = User(email="dipali@nexusflow.ai")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    email: str = payload.get("sub")
+    if email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 # Allow CORS — restrict to specific origins in production via ALLOWED_ORIGINS env var
@@ -43,32 +63,72 @@ app.add_middleware(
 
 circuit_breaker = CircuitBreaker(max_daily_spend=50.0)
 
-@app.get("/")
-def root():
-    return {"status": "operational", "system": "NexusFlow Engine", "db": "SQLite"}
+# --- Authentication Endpoints ---
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint for deployment platforms (Railway, etc.)"""
-    return {"status": "healthy", "version": "0.2.2"}
+@app.post("/auth/signup")
+def signup(email: str, password: str, db: Session = Depends(get_db)):
+    """Registers a new user."""
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = get_password_hash(password)
+    user = User(email=email, hashed_password=hashed_password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "risk_tolerance": user.risk_tolerance,
+            "is_grandma_mode": user.is_grandma_mode
+        }
+    }
+
+@app.post("/auth/login")
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Authenticates a user and returns a JWT."""
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "risk_tolerance": user.risk_tolerance,
+            "is_grandma_mode": user.is_grandma_mode
+        }
+    }
 
 @app.get("/queue/daily", response_model=Dict[str, List[ContentSchema]])
-def get_daily_queue(db: Session = Depends(get_db)):
+def get_daily_queue(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Returns pending content from the REAL database.
     """
-    contents = db.query(Content).filter(Content.status == "pending_review").limit(10).all()
+    # Only show content for the current user
+    contents = db.query(Content).filter(
+        Content.status == "pending_review",
+        Content.user_id == current_user.id
+    ).limit(10).all()
     return {"queue": contents}
 
 @app.post("/queue/{content_id}/approve")
-async def approve_content(content_id: str, db: Session = Depends(get_db)):
+async def approve_content(content_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     from apps.engine.core.ledger_service import LedgerService
     
-    # 1. Fetch User
-    user = get_current_user(db)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     # 2. Check Solvency
     APPROVAL_COST = 5.0 
     
@@ -90,6 +150,24 @@ async def approve_content(content_id: str, db: Session = Depends(get_db)):
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
         
+    # --- Grandma Mode Safety Logic ---
+    if user.is_grandma_mode:
+        # 1. Hard confidence floor
+        if content.confidence_score < 0.9:
+            content.status = "rejected"
+            content.policy_reason = "Grandma Mode Safety: Confidence score too low (< 0.9)"
+            db.commit()
+            raise HTTPException(
+                status_code=403, 
+                detail="Grandma Mode Safety: This content's confidence score is too low for your safety settings."
+            )
+        
+        # 2. Hard budget ceiling
+        MAX_GRANDMA_BUDGET = 5.0
+        if content.daily_budget > MAX_GRANDMA_BUDGET:
+            content.daily_budget = MAX_GRANDMA_BUDGET
+            print(f"[SAFETY] Capping Grandma's budget for {content.id} at ${MAX_GRANDMA_BUDGET}")
+
     content.status = "approved"
     content.distribution_status = "processing"
     db.commit()
@@ -140,8 +218,8 @@ async def approve_content(content_id: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/queue/{content_id}/reject")
-def reject_content(content_id: str, db: Session = Depends(get_db)):
-    content = db.query(Content).filter(Content.id == content_id).first()
+def reject_content(content_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    content = db.query(Content).filter(Content.id == content_id, Content.user_id == current_user.id).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
         
@@ -154,29 +232,6 @@ def manual_trip():
     circuit_breaker._trip()
     return {"status": "circuit_broken", "message": "Manual override activated."}
 
-# --- Authentication ---
-from pydantic import BaseModel
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-@app.post("/login")
-def login(creds: LoginRequest, db: Session = Depends(get_db)):
-    # Mock Auth for Skeleton Phase
-    # Real app would hash passwords (bcrypt)
-    from apps.engine.db.models import User
-    
-    user = db.query(User).filter(User.email == creds.email).first()
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-    # Mock Password Check (In dev we assume 'password' is the universal password for the mock user)
-    if creds.password != "password":
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-    return {"token": f"mock_token_{user.id}", "user_id": user.id}
-
 # --- User Settings ---
 class SettingsRequest(BaseModel):
     risk_tolerance: float
@@ -184,10 +239,7 @@ class SettingsRequest(BaseModel):
     persona: str = "grandma"
 
 @app.get("/user/settings")
-def get_settings(user_id: str = "default", db: Session = Depends(get_db)):
-    # Fetch current user using helper
-    user = get_current_user(db)
-        
+def get_settings(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     # GENESIS GRANT: Check if user has money. If no history, give seed capital.
     from apps.engine.core.ledger_service import LedgerService
     current_balance = LedgerService.get_balance(db, user.id)
@@ -226,8 +278,7 @@ def get_settings(user_id: str = "default", db: Session = Depends(get_db)):
     }
 
 @app.post("/user/settings")
-def update_settings(settings: SettingsRequest, db: Session = Depends(get_db)):
-    user = get_current_user(db)
+def update_settings(settings: SettingsRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -238,6 +289,7 @@ def update_settings(settings: SettingsRequest, db: Session = Depends(get_db)):
     # Sync is_grandma_mode for UI if persona is grandma
     if settings.persona == "grandma":
         user.is_grandma_mode = True
+        user.risk_tolerance = 0.1 # Force Safe Minimum
     elif settings.persona == "degen":
         user.is_grandma_mode = False
         user.risk_tolerance = 0.9 # Force high risk
@@ -253,15 +305,53 @@ class ReferralClaim(BaseModel):
     user_id: str
     code: str
 
+def check_referral_loop(db: Session, start_user_id: str, current_referrer_code: str, visited=None) -> bool:
+    """
+    Recursively checks if a referral chain leads back to the starting user.
+    """
+    if visited is None:
+        visited = set()
+    
+    # Base case: we found the start user in the chain
+    referrer = db.query(User).filter(User.referral_code == current_referrer_code).first()
+    if not referrer:
+        return False
+        
+    if referrer.id == start_user_id:
+        return True
+        
+    if referrer.id in visited:
+        return False # Already checked this path
+        
+    visited.add(referrer.id)
+    
+    if referrer.referred_by:
+        return check_referral_loop(db, start_user_id, referrer.referred_by, visited)
+        
+    return False
+
+def flag_referral_chain(db: Session, current_referrer_code: str, visited=None):
+    """
+    Recursively shadow-bans everyone in a detected loop.
+    """
+    if visited is None:
+        visited = set()
+        
+    referrer = db.query(User).filter(User.referral_code == current_referrer_code).first()
+    if not referrer or referrer.id in visited:
+        return
+        
+    referrer.is_shadow_banned = True
+    visited.add(referrer.id)
+    
+    if referrer.referred_by:
+        flag_referral_chain(db, referrer.referred_by, visited)
+
 @app.post("/user/referral/claim")
-def claim_referral(claim: ReferralClaim, db: Session = Depends(get_db)):
+def claim_referral(claim: ReferralClaim, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Links the specified user to a referrer.
     """
-    user = db.query(User).filter(User.id == claim.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
     # Fraud Protection 1: Account Age Limit (24 hours)
     from datetime import datetime, timedelta
     import pytz
@@ -285,13 +375,13 @@ def claim_referral(claim: ReferralClaim, db: Session = Depends(get_db)):
     if referrer.id == user.id:
         raise HTTPException(status_code=400, detail="Cannot refer yourself.")
         
-    # Fraud Protection 2: Circular Referral Prevention
-    if referrer.referred_by == user.referral_code:
-        # Flag both for suspicious activity
+    # Fraud Protection 2: Recursive Circular Referral Prevention
+    if check_referral_loop(db, user.id, claim.code):
+        # Flag the entire chain for suspicious activity
         user.is_shadow_banned = True
-        referrer.is_shadow_banned = True
+        flag_referral_chain(db, claim.code)
         db.commit()
-        raise HTTPException(status_code=400, detail="Circular referrals are not allowed. Accounts flagged.")
+        raise HTTPException(status_code=400, detail="Circular referrals detected. Accounts flagged for review.")
         
     # Link
     user.referred_by = claim.code
@@ -317,11 +407,10 @@ def claim_referral(claim: ReferralClaim, db: Session = Depends(get_db)):
     return {"status": "success", "referrer_email": referrer.email}
 
 @app.post("/user/capital/inject")
-def request_capital(db: Session = Depends(get_db)):
+def request_capital(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Mock endpoint to inject seed capital if the user is broke.
     """
-    user = get_current_user(db)
     from apps.engine.core.ledger_service import LedgerService
     
     current_balance = LedgerService.get_balance(db, user.id)
@@ -339,14 +428,10 @@ def request_capital(db: Session = Depends(get_db)):
     return {"status": "success", "new_balance": current_balance + 50.00}
 
 @app.get("/user/profile")
-def get_user_profile(user_id: str = "default", db: Session = Depends(get_db)):
+def get_user_profile(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Returns comprehensive user statistics and earnings data.
     """
-    user = get_current_user(db)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
     from apps.engine.core.ledger_service import LedgerService
     balance = LedgerService.get_balance(db, user.id)
     
@@ -382,17 +467,13 @@ def get_agent_logs():
 
 # --- Agent Triggers ---
 @app.post("/content/swarm")
-async def trigger_swarm(niche: str = "general", db: Session = Depends(get_db)):
+async def trigger_swarm(niche: str = "general", db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Triggers the 'ContentSwarm' agent to generate a new idea.
     """
     from apps.engine.agents.content_swarm import ContentSwarm
     agent = ContentSwarm()
-    # Pass niche and user_id to run.
-    user_id = None
-    # Use get_current_user helper
-    user = get_current_user(db)
-    user_id = user.id if user else None
+    user_id = user.id
         
     try:
         print(f"[MAIN] Triggering swarm for niche: {niche} (User: {user_id})")
@@ -420,7 +501,7 @@ async def trigger_swarm(niche: str = "general", db: Session = Depends(get_db)):
 
 # --- Analytics ---
 @app.post("/analytics/simulate")
-async def simulate_traffic(db: Session = Depends(get_db)):
+async def simulate_traffic(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Triggers the TrafficAgent to simulate performance for all approved content.
     """
@@ -435,7 +516,6 @@ async def simulate_traffic(db: Session = Depends(get_db)):
         agent.simulate_performance(db, content.id)
         
     # 3. Record Snapshot for History
-    user = get_current_user(db)
     from apps.engine.core.ledger_service import LedgerService
     total_rev = db.query(func.sum(Content.monetization_potential)).filter(Content.user_id == user.id, Content.status == "approved").scalar() or 0
     total_views = db.query(func.sum(Content.view_count)).filter(Content.user_id == user.id, Content.status == "approved").scalar() or 0
@@ -451,11 +531,10 @@ async def simulate_traffic(db: Session = Depends(get_db)):
     return {"status": "success", "simulated_count": len(approved_content)}
 
 @app.get("/analytics/stats")
-def get_analytics(db: Session = Depends(get_db)):
+def get_analytics(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Returns aggregated stats for Charts using real DB data and History snapshots.
     """
-    user = get_current_user(db)
     
     # 1. Historical Trends from AnalyticsHistory
     history = db.query(AnalyticsHistory).filter(AnalyticsHistory.user_id == user.id).order_by(AnalyticsHistory.timestamp.asc()).all()
@@ -491,20 +570,20 @@ def get_analytics(db: Session = Depends(get_db)):
     }
 
 @app.get("/analytics/ledger")
-def get_ledger(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+def get_ledger(skip: int = 0, limit: int = 20, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Returns the persistent history from the Ledger table with pagination.
     """
     from apps.engine.db.models import Ledger
-    entries = db.query(Ledger).order_by(Ledger.id.desc()).offset(skip).limit(limit).all()
+    entries = db.query(Ledger).filter(Ledger.user_id == user.id).order_by(Ledger.id.desc()).offset(skip).limit(limit).all()
     return {"entries": entries}
 
 @app.put("/content/{content_id}")
-def update_content(content_id: str, payload: dict, db: Session = Depends(get_db)):
+def update_content(content_id: str, payload: dict, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Updates content title/description (Remix feature).
     """
-    content = db.query(Content).filter(Content.id == content_id).first()
+    content = db.query(Content).filter(Content.id == content_id, Content.user_id == user.id).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
     
@@ -517,11 +596,12 @@ def update_content(content_id: str, payload: dict, db: Session = Depends(get_db)
     return {"status": "updated", "content": content}
 
 @app.get("/content/search")
-def search_content(q: str, db: Session = Depends(get_db)):
+def search_content(q: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Simple fuzzy search for content.
     """
     results = db.query(Content).filter(
+        Content.user_id == user.id,
         (Content.title.contains(q)) | (Content.description.contains(q))
     ).limit(10).all()
     return {"results": results}
@@ -600,11 +680,10 @@ def get_live_activity(db: Session = Depends(get_db)):
 # --- Social Connections (Publisher System) ---
 
 @app.get("/social/connections")
-def get_social_connections(db: Session = Depends(get_db)):
+def get_social_connections(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """
     Returns user's connected social media accounts.
     """
-    user = get_current_user(db)
     connections = db.query(SocialConnection).filter(
         SocialConnection.user_id == user.id
     ).all()
@@ -623,12 +702,7 @@ def get_social_connections(db: Session = Depends(get_db)):
     }
 
 @app.post("/social/connect/{platform}")
-def connect_social_account(platform: str, db: Session = Depends(get_db)):
-    """
-    Mock OAuth flow - connects a social account.
-    In production, this would redirect to platform OAuth.
-    """
-    user = get_current_user(db)
+def connect_social_account(platform: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     
     # Check if already connected
     existing = db.query(SocialConnection).filter(
@@ -663,11 +737,7 @@ def connect_social_account(platform: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/social/connect/manual")
-def connect_social_account_manual(payload: SocialConnectManual, db: Session = Depends(get_db)):
-    """
-    Manually connects a social account with a provided token.
-    """
-    user = get_current_user(db)
+def connect_social_account_manual(payload: SocialConnectManual, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     from apps.engine.core.security import encrypt_token
     
     # Check for existing
@@ -698,11 +768,7 @@ def connect_social_account_manual(payload: SocialConnectManual, db: Session = De
     return {"status": "success", "platform": payload.platform}
 
 @app.delete("/social/disconnect/{platform}")
-def disconnect_social_account(platform: str, db: Session = Depends(get_db)):
-    """
-    Disconnects (deactivates) a social account.
-    """
-    user = get_current_user(db)
+def disconnect_social_account(platform: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     
     connection = db.query(SocialConnection).filter(
         SocialConnection.user_id == user.id,
@@ -718,13 +784,7 @@ def disconnect_social_account(platform: str, db: Session = Depends(get_db)):
     return {"status": "disconnected", "platform": platform}
 
 @app.post("/content/{content_id}/publish")
-async def publish_content(content_id: str, db: Session = Depends(get_db)):
-    """
-    Triggers the PublisherAgent to post content to connected platforms.
-    """
-    from apps.engine.agents.publisher import PublisherAgent
-    
-    user = get_current_user(db)
+async def publish_content(content_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     agent = PublisherAgent()
     
     try:

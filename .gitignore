@@ -1,29 +1,55 @@
-node_modules
-.next
-dist
+# Dependencies
+node_modules/
+.venv/
+venv/
+**/node_modules/
+**/.venv/
+
+# Build & Cache
+.next/
+.turbo/
+dist/
+build/
+__pycache__/
+*.pyc
+**/*.tsbuildinfo
+next-env.d.ts
+
+# Environments & Secrets
 .env
-.env.local
+**/.env
+**/.env.local
+**/.env.*
+!.env.example
+
+# Local Database
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+
+# Logs
+**/*.log
+
+# Operating System Files
 .DS_Store
 **/.DS_Store
-coverage
-.turbo
-build
-__pycache__
-*.pyc
-.venv
-venv
 
-# Local database
-*.db
-
-# Verification & test scripts (local dev only)
-verify_*.py
-test_*.py
-verify_concurrency.py
-
-# Local reports and audit files
+# Research & Audit Reports
 financial_audit.md
 financial_audit_report.md
 financial_flaw_report.md
-implementation_plan.md
 verification_result.txt
+implementation_plan.md
+research_*.md
+audit_*.md
+
+# Verification & Local Test Scripts
+verify_*.py
+test_*.py
+verify_concurrency.py
+verify_economy.py
+verify_financials.py
+verify_video_gen.py
+**/verify_*.py
+**/test_*.py

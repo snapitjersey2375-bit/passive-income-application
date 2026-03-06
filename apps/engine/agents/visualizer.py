@@ -11,36 +11,35 @@ class VisualizerAgent(BaseAgent):
 
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Translates a title/niche into a high-quality image URL.
+        Translates a title/niche into one or more high-quality image URLs.
         """
         title = context.get("title", "")
-        niche = context.get("niche", "general")
+        niche = context.get("niche", "tech")
+        count = context.get("count", 1)
         
-        self.log(f"Generating visual preview for: {title}")
+        self.log(f"Generating {count} visual previews for: {title}")
         
-        # In a real system, we'd use DALL-E 3 or Midjourney.
-        # For this prototype, we use high-quality dynamic Unsplash Source images
-        # filtered by the niche keywords.
+        # High-quality Unsplash IDs curated for a "Premium Tech/Business" aesthetic
+        image_pool = [
+            "1611162617213-7d7a39e9b1d7", # Abstract Apps
+            "1550751827-4bd374c3f58b", # High-tech Matrix
+            "1451187580459-43490279c0fa", # Earth/Data
+            "1581091226825-a6a2a5aee158", # Robotics/Lab
+            "1518770660439-4636190af475", # Circuits
+            "1460925895917-afdab827c52f", # Dashboard/Charts
+            "1551288049-bbbda595c7a8", # Data visualization
+            "1558494949-ef010c7191ae", # Server room
+        ]
         
-        search_term = niche
-        if "crypto" in title.lower(): search_term = "cryptocurrency"
-        if "money" in title.lower(): search_term = "cash"
-        if "code" in title.lower() or "python" in title.lower(): search_term = "programming"
-        if "fitness" in title.lower() or "gym" in title.lower(): search_term = "workout"
+        import random
+        selected_ids = random.sample(image_pool, min(count, len(image_pool)))
         
-        encoded_term = urllib.parse.quote(search_term)
-        
-        # Using Source Unsplash with random seed to prevent duplicate images in a single session
-        thumbnail_url = f"https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=800&keyword={encoded_term}"
-        
-        # Alternatively, use dynamic source (less stable but more variety)
-        # Note: source.unsplash is being deprecated, using a high-quality static proxy fallback
-        variety_id = hash(title) % 1000
-        thumbnail_url = f"https://source.unsplash.com/featured/800x600?{encoded_term}&sig={variety_id}"
-        
-        # Fallback to high-quality placeholder if unsplash source fails
-        # thumbnail_url = f"https://loremflickr.com/800/600/{encoded_term}?lock={variety_id}"
+        urls = [
+            f"https://images.unsplash.com/photo-{img_id}?q=80&w=1200&auto=format&fit=crop"
+            for img_id in selected_ids
+        ]
 
-        self.log(f"Visual acquired: {thumbnail_url}")
+        if count == 1:
+            return {"thumbnail_url": urls[0]}
         
-        return {"thumbnail_url": thumbnail_url}
+        return {"urls": urls}

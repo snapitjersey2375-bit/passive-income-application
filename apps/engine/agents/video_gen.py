@@ -16,19 +16,25 @@ class VideoGenAgent(BaseAgent):
 
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generates an HTML file that acts as the video.
+        Generates a high-production value vertical video (HTML5).
         """
         title = context.get("title", "Untitled")
-        image_url = context.get("image_url", "https://source.unsplash.com/random/800x600")
         description = context.get("description", "")
+        duration = context.get("duration", 180) 
+        scenes = context.get("scenes", [])
         
-        self.log(f"Generating HTML Video for: {title}")
+        # Audio Source: Professional Tech/Ambient track
+        audio_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3"
+        
+        self.log(f"Producing High-End Video: {title}")
         
         video_id = str(uuid.uuid4())
         filename = f"video_{video_id}.html"
         filepath = os.path.join(self.output_dir, filename)
         
-        # HTML5 Animation Template (Ken Burns Effect + Typewriter Text)
+        import json
+        scenes_json = json.dumps(scenes)
+        
         html_content = f"""
 <!DOCTYPE html>
 <html lang="en">
@@ -37,72 +43,263 @@ class VideoGenAgent(BaseAgent):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
     <style>
-        body, html {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; }}
-        .container {{ position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }}
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
         
-        /* Background Image with Ken Burns Effect */
-        .bg-image {{
+        :root {{
+            --primary: #3b82f6;
+            --accent: #8b5cf6;
+            --bg: #050505;
+        }}
+
+        body, html {{ margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Outfit', sans-serif; color: white; }}
+        
+        /* 9:16 Vertical Video Container */
+        .video-wrapper {{
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #111 0%, #000 100%);
+        }}
+
+        .viewport {{
+            position: relative;
+            width: clamp(300px, 56.25vh, 100vw);
+            height: 100vh;
+            background: #000;
+            overflow: hidden;
+            box-shadow: 0 0 100px rgba(0,0,0,1);
+            border-left: 1px solid rgba(255,255,255,0.05);
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }}
+
+        .scene {{
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('{image_url}');
+            opacity: 0;
+            transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 20vh;
+            text-align: center;
+        }}
+        
+        .scene.active {{ opacity: 1; z-index: 10; }}
+
+        .bg-layer {{
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
             background-size: cover;
             background-position: center;
-            opacity: 0.6;
-            animation: kenburns 15s infinite alternate;
+            filter: brightness(0.4) saturate(1.2);
+            transform: scale(1.1);
+            transition: transform 10s linear;
         }}
         
-        @keyframes kenburns {{
-            0% {{ transform: scale(1); }}
-            100% {{ transform: scale(1.2) translate(2%, 2%); }}
-        }}
-        
-        /* Overlay Text */
-        .content {{
+        .scene.active .bg-layer {{ transform: scale(1.3); }}
+
+        .content-overlay {{
             position: relative;
-            z-index: 10;
-            color: white;
-            text-align: center;
-            max-width: 80%;
-            text-shadow: 0 4px 10px rgba(0,0,0,0.8);
+            z-index: 20;
+            padding: 2rem;
+            width: 90%;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
         }}
-        
+
         h1 {{
-            font-size: 3rem;
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 1.1;
             margin-bottom: 1rem;
+            background: linear-gradient(to right, #fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.5));
+            transform: translateY(20px);
             opacity: 0;
-            animation: fadeup 1s forwards 0.5s;
+            transition: all 0.8s ease 0.5s;
         }}
-        
+
         p {{
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            line-height: 1.4;
+            color: #ccc;
+            transform: translateY(20px);
             opacity: 0;
-            animation: fadeup 1s forwards 1.2s;
+            transition: all 0.8s ease 0.8s;
         }}
-        
-        @keyframes fadeup {{
-            from {{ opacity: 0; transform: translateY(20px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
+
+        .scene.active h1, .scene.active p {{
+            transform: translateY(0);
+            opacity: 1;
         }}
-        
-        /* Progress Bar to simulate video playback */
-        .progress {{
+
+        /* HUD Elements */
+        .hud-top {{
             position: absolute;
-            bottom: 0; left: 0; height: 5px; background: red;
-            width: 0%;
-            animation: play 10s linear forwards;
+            top: 2rem; left: 0; width: 100%;
+            display: flex; justify-content: space-between;
+            padding: 0 1.5rem;
+            z-index: 100;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
         }}
-        @keyframes play {{ to {{ width: 100%; }} }}
+
+        .progress-bar {{
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            width: 0%;
+            z-index: 200;
+        }}
+
+        /* Floating Particles */
+        canvas {{
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 15;
+            pointer-events: none;
+            opacity: 0.3;
+        }}
+
+        #audio-hint {{
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.1);
+            padding: 1rem 2rem;
+            border-radius: 100px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+        }}
+        @keyframes pulse {{
+            0% {{ transform: translate(-50%, -50%) scale(1); }}
+            50% {{ transform: translate(-50%, -50%) scale(1.05); }}
+            100% {{ transform: translate(-50%, -50%) scale(1); }}
+        }}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="bg-image"></div>
-        <div class="content">
-            <h1>{title}</h1>
-            <p>{description}</p>
+    <div class="video-wrapper">
+        <div class="viewport" id="viewport">
+            <div class="hud-top">
+                <span>● LIVE: AGENTIC STREAM</span>
+                <span id="timestamp">00:00 / 03:00</span>
+            </div>
+            
+            <div id="scenes-container"></div>
+            
+            <canvas id="particles"></canvas>
+            <div class="progress-bar" id="progress-bar"></div>
         </div>
-        <div class="progress"></div>
     </div>
+
+    <div id="audio-hint" onclick="startVideo()">🔊 TAP TO UNMUTE & PLAY</div>
+
+    <audio id="bg-music" loop>
+        <source src="{audio_url}" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const scenes = {scenes_json};
+        const totalDuration = {duration};
+        const container = document.getElementById('scenes-container');
+        const progressBar = document.getElementById('progress-bar');
+        const timestamp = document.getElementById('timestamp');
+        const music = document.getElementById('bg-music');
+        const hint = document.getElementById('audio-hint');
+
+        // Setup Scenes
+        scenes.forEach((s, i) => {{
+            const div = document.createElement('div');
+            div.className = 'scene' + (i === 0 ? ' active' : '');
+            div.innerHTML = `
+                <div class="bg-layer" style="background-image: url('${{s.image}}')"></div>
+                <div class="content-overlay">
+                    <h1>${{s.title}}</h1>
+                    <p>${{s.body}}</p>
+                </div>
+            `;
+            container.appendChild(div);
+        }});
+
+        let playing = false;
+        let startTime = 0;
+
+        function startVideo() {{
+            if (playing) return;
+            playing = true;
+            hint.style.display = 'none';
+            music.play();
+            startTime = Date.now();
+            requestAnimationFrame(update);
+        }}
+
+        function formatTime(s) {{
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return `${{m.toString().padStart(2, '0')}}:${{sec.toString().padStart(2, '0')}}`;
+        }}
+
+        function update() {{
+            const elapsed = (Date.now() - startTime) / 1000;
+            const progress = Math.min(elapsed / totalDuration, 1);
+            
+            progressBar.style.width = (progress * 100) + '%';
+            timestamp.innerText = `${{formatTime(elapsed)}} / ${{formatTime(totalDuration)}}`;
+            
+            const sceneIdx = Math.floor(progress * (scenes.length - 0.001));
+            document.querySelectorAll('.scene').forEach((el, i) => {{
+                el.classList.toggle('active', i === sceneIdx);
+            }});
+
+            if (progress < 1) requestAnimationFrame(update);
+        }}
+
+        // Particle System
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        let w, h, particles = [];
+
+        function initParticles() {{
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+            particles = Array.from({{length: 50}}, () => ({{
+                x: Math.random() * w,
+                y: Math.random() * h,
+                s: Math.random() * 2 + 1,
+                v: Math.random() * 0.5 + 0.1
+            }}));
+        }}
+
+        function drawParticles() {{
+            ctx.clearRect(0,0,w,h);
+            ctx.fillStyle = '#fff';
+            particles.forEach(p => {{
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.s, 0, Math.PI*2);
+                ctx.fill();
+                p.y -= p.v;
+                if (p.y < -10) p.y = h + 10;
+            }});
+            requestAnimationFrame(drawParticles);
+        }}
+
+        window.addEventListener('resize', initParticles);
+        initParticles();
+        drawParticles();
+    </script>
 </body>
 </html>
         """
@@ -111,11 +308,11 @@ class VideoGenAgent(BaseAgent):
             f.write(html_content)
             
         public_url = f"/generated_videos/{filename}"
-        
-        self.log(f"Video generated at: {filepath}")
+        self.log(f"Entertainment V3 Video generated: {filepath}")
         
         return {
             "video_path": filepath,
             "video_url": public_url,
+            "duration": duration,
             "status": "success"
         }
