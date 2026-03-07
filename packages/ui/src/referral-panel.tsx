@@ -125,7 +125,7 @@ export function ReferralPanel() {
                         Wallet Balance
                     </div>
                     <div className="text-3xl font-black text-green-600">
-                        ${stats.wallet_balance.toFixed(2)}
+                        ${stats.wallet_balance ? stats.wallet_balance.toFixed(2) : "0.00"}
                     </div>
                 </div>
             </div>

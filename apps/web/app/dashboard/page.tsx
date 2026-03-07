@@ -617,11 +617,11 @@ export default function DashboardPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl border border-white/50 shadow-sm">
                                     <h4 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Viral Trajectory</h4>
-                                    <ViralLineChart data={analytics.viral_trends} />
+                                    <ViralLineChart data={analytics.viral_trends || []} />
                                 </div>
                                 <div className="bg-white/50 backdrop-blur-md p-6 rounded-2xl border border-white/50 shadow-sm">
                                     <h4 className="text-sm font-bold text-gray-500 mb-4 uppercase tracking-wider">Revenue Projection</h4>
-                                    <RevenueBarChart data={analytics.revenue_projections} />
+                                    <RevenueBarChart data={analytics.revenue_projections || []} />
                                 </div>
                             </div>
 

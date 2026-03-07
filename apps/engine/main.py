@@ -153,9 +153,9 @@ async def approve_content(content_id: str, db: Session = Depends(get_db), user: 
     # --- Grandma Mode Safety Logic ---
     if user.is_grandma_mode:
         # 1. Hard confidence floor
-        if content.confidence_score < 0.9:
+        if content.confidence_score < 0.7:
             content.status = "rejected"
-            content.policy_reason = "Grandma Mode Safety: Confidence score too low (< 0.9)"
+            content.policy_reason = "Grandma Mode Safety: Confidence score too low (< 0.7)"
             db.commit()
             raise HTTPException(
                 status_code=403, 

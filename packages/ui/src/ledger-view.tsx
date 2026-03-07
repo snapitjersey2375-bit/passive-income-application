@@ -20,7 +20,7 @@ export function LedgerView() {
         fetch('http://localhost:8000/analytics/ledger?limit=50')
             .then(res => res.json())
             .then(data => {
-                setEntries(data.entries);
+                setEntries(data.entries || []);
                 setIsLoading(false);
             })
             .catch(err => console.error("Failed to load ledger:", err));

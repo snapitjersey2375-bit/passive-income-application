@@ -1,3 +1,4 @@
+"use client";
 import React, { useState } from 'react';
 import { X, Sparkles, Save } from 'lucide-react';
 import { cn } from './utils/cn';
