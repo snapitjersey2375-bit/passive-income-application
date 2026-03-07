@@ -1,0 +1,1 @@
+[user]\n    name = Snapit Jersey\n    email = snapitjersey2375-bit@example.com\n\n[core]\n    editor = nano\n\n[alias]\n    st = status\n    co = checkout\n    ci = commit\n    br = branch\n    lg = log --oneline --graph --decorate\n    up = pull --rebase\n
