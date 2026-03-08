@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Loader2, Sparkles, ArrowRight, Copy, Check } from "lucide-react";
 import { cn } from "@repo/ui";
 
 export function WaitlistForm() {
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<{ position?: number; referral_code?: string } | null>(null);
     const [copied, setCopied] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -34,7 +34,7 @@ export function WaitlistForm() {
             } else {
                 setStatus("error");
             }
-        } catch (err) {
+        } catch {
             setStatus("error");
         }
     };
@@ -59,7 +59,7 @@ export function WaitlistForm() {
                         <Sparkles className="w-8 h-8 text-green-400" />
                     </div>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">You're on the list!</h3>
+                <h3 className="text-2xl font-bold text-white mb-2">You&apos;re on the list!</h3>
                 <p className="text-zinc-300 mb-6">
                     You are <span className="text-green-400 font-bold">#{result?.position}</span> in line.
                 </p>

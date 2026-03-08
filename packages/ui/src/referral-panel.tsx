@@ -44,7 +44,7 @@ export function ReferralPanel() {
         if (!stats?.referral_code) return;
         const shareData = {
             title: "Join NexusFlow AI",
-            text: `Use my referral code ${stats.referral_code} to join NexusFlow AI and get $10 starter capital!`,
+            text: `Use my referral code ${stats.referral_code} to join NexusFlow AI and get $10 in free AI Credits!`,
             url: window.location.origin
         };
 
@@ -122,7 +122,7 @@ export function ReferralPanel() {
                 <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm transition-transform hover:scale-[1.02]">
                     <div className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-1">
                         <DollarSign className="w-3 h-3" />
-                        Wallet Balance
+                        AI Credit Balance
                     </div>
                     <div className="text-3xl font-black text-green-600">
                         ${stats.wallet_balance ? stats.wallet_balance.toFixed(2) : "0.00"}
@@ -134,7 +134,7 @@ export function ReferralPanel() {
             <div className="mt-8 text-sm text-purple-700/70 bg-purple-50 rounded-xl p-4 border border-purple-100 flex items-start gap-3">
                 <span className="text-xl">💡</span>
                 <p className="font-medium">
-                    <span className="font-bold text-purple-700">Earn $10 instantly</span> for each friend who joins using your code. Help us grow the NexusFlow ecosystem!
+                    <span className="font-bold text-purple-700">Earn $10 in AI Credits</span> for each friend who joins using your code. Help us grow the NexusFlow ecosystem!
                 </p>
             </div>
         </div>

@@ -30,7 +30,7 @@ export function RemixModal({ item, isOpen, onClose, onSave }: RemixModalProps) {
             // Mock LLM remix
             await new Promise(r => setTimeout(r, 800));
             setTitle(`🔥 REACTING TO ${item.title} (GONE WRONG)`);
-            setDescription(`You won't believe what happened when we tried to ${item.description?.toLowerCase()}... Click the link in bio to see the full story! #viral #trending`);
+            setDescription(`You won&apos;t believe what happened when we tried to ${item.description?.toLowerCase()}... Click the link in bio to see the full story! #viral #trending`);
         } finally {
             setIsRemixing(false);
         }
