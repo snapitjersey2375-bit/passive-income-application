@@ -48,8 +48,9 @@ export default function LoginPage() {
             const data = await res.json();
             // Backend now returns { access_token, user: { id, email, ... } }
             login(data.user, data.access_token);
-        } catch (err: any) {
-            setError(err.message);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: unknown) {
+            setError((err as Error).message);
         } finally {
             setIsLoading(false);
         }

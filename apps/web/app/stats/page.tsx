@@ -80,7 +80,7 @@ export default function PublicStatsPage() {
                         transition={{ delay: 0.2 }}
                         className="text-xl text-zinc-400 max-w-2xl mx-auto"
                     >
-                        Real-time visualization of the world's first AI-powered content curation economy.
+                        Real-time visualization of the world&apos;s first AI-powered content curation economy.
                     </motion.p>
                 </div>
 

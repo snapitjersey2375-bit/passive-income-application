@@ -147,9 +147,9 @@ export default function WaitlistPage() {
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <Check className="w-8 h-8 text-black" />
                                 </div>
-                                <h2 className="text-2xl font-black mb-2">You're In!</h2>
+                                <h2 className="text-2xl font-black mb-2">You&apos;re In!</h2>
                                 <p className="text-zinc-400 mb-6">
-                                    You're <span className="text-white font-bold">#{result.position}</span> in line.
+                                    You&apos;re <span className="text-white font-bold">#{result.position}</span> in line.
                                     {result.message}
                                 </p>
 

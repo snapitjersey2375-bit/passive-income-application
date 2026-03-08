@@ -113,6 +113,7 @@ export default function Home() {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function FeatureItem({ icon, title, description }: { icon: any, title: string, description: string }) {
   return (
     <div className="flex gap-4 p-4 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-white/5">
