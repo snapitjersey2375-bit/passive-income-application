@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "npm@11.6.2",
   "scripts": {
-    "build": "turbo run build",
+    "build": "echo 'Backend is built via Dockerfile'",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
