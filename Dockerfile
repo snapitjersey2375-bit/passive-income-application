@@ -1,40 +1,20 @@
-# Build stage
+# BACKUP DOCKERFILE - Ultra minimal, no complex config
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+# Install system deps
+RUN apt-get update && apt-get install -y gcc postgresql-client && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-# Cache buster - March 14 2026
+# Copy and install requirements
 COPY apps/engine/requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy app
 COPY apps/engine /app/apps/engine
-COPY apps/web /app/apps/web
-COPY packages /app/packages
-
-# Create necessary directories
-RUN mkdir -p /app/logs
-
-# Copy entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-# Health check disabled temporarily - will test endpoint directly
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-#     CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Run entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Direct command - no entrypoint, no variables, no complexity
+CMD python -m uvicorn apps.engine.main:app --host 0.0.0.0 --port 8000
