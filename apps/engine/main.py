@@ -57,9 +57,17 @@ if _raw_origins:
     ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",")]
     _origin_regex = None
 else:
-    ALLOWED_ORIGINS = []
-    # Dev: regex matches any localhost/127.0.0.1 at any port — compatible with allow_credentials
-    _origin_regex = r"http://(localhost|127\.0\.0\.1)(:\d+)?" if not _is_prod else None
+    if _is_prod:
+        # Production: explicitly allow Vercel frontend
+        ALLOWED_ORIGINS = [
+            "https://passive-income-application-web.vercel.app",
+            "http://localhost:3000",  # Local testing
+        ]
+        _origin_regex = None
+    else:
+        # Dev: regex matches any localhost/127.0.0.1 at any port
+        ALLOWED_ORIGINS = []
+        _origin_regex = r"http://(localhost|127\.0\.0\.1)(:\d+)?"
 
 app.add_middleware(
     CORSMiddleware,
