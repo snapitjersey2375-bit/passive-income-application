@@ -31,5 +31,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "apps.engine.main:app"]
+# Run gunicorn with dynamic port
+CMD ["sh", "-c", "gunicorn -w 4 -b 0.0.0.0:${PORT:-8000} apps.engine.main:app"]
