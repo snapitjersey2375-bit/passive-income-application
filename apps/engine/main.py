@@ -70,6 +70,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Health Check Endpoint (for Docker healthcheck & monitoring) ────────────────
+@app.get("/health")
+def health_check():
+    """Health check endpoint for deployment monitoring."""
+    return {
+        "status": "healthy",
+        "service": "NexusFlow Engine",
+        "version": "0.3.0"
+    }
+
 # ── Auth helpers ───────────────────────────────────────────────────────────────
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 AUTH_COOKIE_NAME = "nexus_token"
