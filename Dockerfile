@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
+# Cache buster - March 14 2026
 COPY apps/engine/requirements.txt .
 
 # Install Python dependencies
