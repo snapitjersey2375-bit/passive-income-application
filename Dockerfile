@@ -25,6 +25,10 @@ COPY packages /app/packages
 # Create necessary directories
 RUN mkdir -p /app/logs
 
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Health check disabled temporarily - will test endpoint directly
 # HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 #     CMD curl -f http://localhost:8000/health || exit 1
@@ -32,5 +36,5 @@ RUN mkdir -p /app/logs
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn with dynamic port
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8000", "apps.engine.main:app"]
+# Run entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
