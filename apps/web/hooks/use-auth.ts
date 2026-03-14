@@ -16,31 +16,25 @@ export function useAuth() {
     const router = useRouter();
 
     useEffect(() => {
-        const checkAuth = () => {
-            const storedUser = localStorage.getItem("nexus_user");
-            const token = localStorage.getItem("nexus_token");
-
-            if (storedUser && token) {
-                try {
-                    setUser(JSON.parse(storedUser));
-                } catch (e) {
-                    console.error("Failed to parse user", e);
-                }
+        const storedUser = localStorage.getItem("nexus_user");
+        const token = localStorage.getItem("nexus_token");
+        if (storedUser && token) {
+            try {
+                setUser(JSON.parse(storedUser));
+            } catch {
+                // Corrupted storage — clear it
+                localStorage.removeItem("nexus_user");
+                localStorage.removeItem("nexus_token");
             }
-            setIsLoading(false);
-        };
-        checkAuth();
+        }
+        setIsLoading(false);
     }, []);
 
     const login = (userData: User, token: string) => {
-        console.log("useAuth.login called with:", { userData, token });
         localStorage.setItem("nexus_user", JSON.stringify(userData));
         localStorage.setItem("nexus_token", token);
-        console.log("Stored in localStorage");
         setUser(userData);
-        console.log("Calling router.push to /dashboard");
         router.push("/dashboard");
-        console.log("router.push called");
     };
 
     const logout = () => {

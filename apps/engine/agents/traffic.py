@@ -174,7 +174,6 @@ class TrafficAgent(BaseAgent):
 
         # 4. Record Earnings (If significant)
         if revenue > 0.01:
-            user = db.query(User).first() # TODO: content.user_id if multi-user
             LedgerService.record_transaction(
                 db,
                 user.id,
@@ -185,7 +184,6 @@ class TrafficAgent(BaseAgent):
         
         db.commit()
         self.log(f"Traffic update: +{new_views} views => ${revenue:.4f}")
-        db.commit()
         
         # The original code had a 'daily_cost' and 'decay_factor' in the final log,
         # but these are not calculated in the new refactored method.

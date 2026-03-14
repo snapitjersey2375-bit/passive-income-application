@@ -2,10 +2,19 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional, Any, Union
 from jose import jwt
-from passlib.context import CryptContext
 
 # Security Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_change_me_in_production")
+_DEFAULT_DEV_KEY = "dev_secret_key_change_me_in_production"
+SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_DEV_KEY)
+
+# Refuse to start with insecure default key in any production-like environment
+_is_production = any(os.getenv(v) for v in ("RAILWAY_ENVIRONMENT", "VERCEL_ENV", "PRODUCTION"))
+if _is_production and SECRET_KEY == _DEFAULT_DEV_KEY:
+    raise RuntimeError(
+        "FATAL: SECRET_KEY env var is not set. "
+        "Generate one with: openssl rand -hex 32"
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 1 week
 

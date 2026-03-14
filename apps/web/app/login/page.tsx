@@ -22,20 +22,23 @@ export default function LoginPage() {
             const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
             const endpoint = isSignup ? "/auth/signup" : "/auth/login";
 
-            // Login uses FormData for OAuth2PasswordRequestForm compatibility
-            // Signup uses JSON
             let res;
             if (isSignup) {
-                res = await fetch(`${API_URL}${endpoint}?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
-                    method: "POST"
-                });
-            } else {
-                const formData = new FormData();
-                formData.append("username", email.trim());
-                formData.append("password", password.trim());
-
+                // Signup: JSON body — credentials never appear in URL or logs
                 res = await fetch(`${API_URL}${endpoint}`, {
                     method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ email: email.trim(), password }),
+                });
+            } else {
+                // Login: OAuth2 form (required by FastAPI OAuth2PasswordRequestForm)
+                const formData = new FormData();
+                formData.append("username", email.trim());
+                formData.append("password", password);
+                res = await fetch(`${API_URL}${endpoint}`, {
+                    method: "POST",
+                    credentials: "include",
                     body: formData,
                 });
             }

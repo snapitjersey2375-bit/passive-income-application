@@ -17,7 +17,11 @@ export function LedgerView() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetch('http://localhost:8000/analytics/ledger?limit=50')
+        const token = typeof window !== 'undefined' ? localStorage.getItem('nexus_token') : null;
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        fetch(`${API_URL}/analytics/ledger?limit=50`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        })
             .then(res => res.json())
             .then(data => {
                 setEntries(data.entries || []);
@@ -70,7 +74,7 @@ export function LedgerView() {
                                     {entry.amount > 0 ? '+' : ''}{entry.amount.toFixed(2)}
                                 </td>
                                 <td className="px-6 py-4 text-right font-mono text-zinc-400">
-                                    ${entry.balance_snapshot.toFixed(2)}
+                                    {entry.balance_snapshot != null ? `$${entry.balance_snapshot.toFixed(2)}` : '—'}
                                 </td>
                                 <td className="px-6 py-4 text-right text-zinc-500 text-xs">
                                     {new Date(entry.created_at).toLocaleTimeString()}
