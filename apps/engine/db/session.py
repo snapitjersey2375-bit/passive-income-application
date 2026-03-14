@@ -3,7 +3,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Fallback to local SQLite if no external DB provided
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./nexusflow.db")
+# Use 'or' to handle both missing and empty string env vars
+DATABASE_URL = os.environ.get("DATABASE_URL") or "sqlite:///./nexusflow.db"
 
 # SQLAlchemy requires 'postgresql://' instead of 'postgres://'
 if DATABASE_URL.startswith("postgres://"):
