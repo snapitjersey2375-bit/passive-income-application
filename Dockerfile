@@ -13,6 +13,12 @@ COPY packages /app/packages
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /app/apps/engine/requirements.txt
 
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
 # Set Python path to allow imports from /app
 ENV PYTHONPATH=/app
 
