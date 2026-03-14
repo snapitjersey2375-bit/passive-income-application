@@ -273,6 +273,21 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
+            <DashboardShell>
+                <div className="flex items-center justify-center h-screen">
+                    <p className="text-gray-600">Loading settings...</p>
+                </div>
+            </DashboardShell>
+        );
+    }
+
+    const platforms = [
+        { id: "tiktok", name: "TikTok", color: "bg-black", icon: "🎵" },
+        { id: "youtube", name: "YouTube", color: "bg-red-600", icon: "▶️" },
+        { id: "shopify", name: "Shopify", color: "bg-green-600", icon: "🛍️" },
+    ];
+
+    return (
         <DashboardShell>
             <div className="max-w-4xl mx-auto p-6 space-y-8">
                 <div>
@@ -300,7 +315,7 @@ export default function SettingsPage() {
                             {platforms.map((platform) => {
                                 const connected = isConnected(platform.id);
                                 const conn = getConnection(platform.id);
-                                const isLoading = connectingPlatform === platform.id;
+                                const isConnecting = connectingPlatform === platform.id;
                                 return (
                                     <div key={platform.id} className={`p-4 rounded-xl border-2 transition-all ${connected ? "border-green-200 bg-green-50" : "border-gray-100 bg-gray-50 hover:border-gray-200"}`}>
                                         <div className="flex items-center gap-3 mb-3">
@@ -311,13 +326,13 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
                                         {connected ? (
-                                            <button onClick={() => handleDisconnect(platform.id)} disabled={isLoading} className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all disabled:opacity-50">
-                                                {isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Unlink size={14} /> Disconnect</>}
+                                            <button onClick={() => handleDisconnect(platform.id)} disabled={isConnecting} className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all disabled:opacity-50">
+                                                {isConnecting ? <Loader2 size={16} className="animate-spin" /> : <><Unlink size={14} /> Disconnect</>}
                                             </button>
                                         ) : (
                                             <div className="space-y-2">
-                                                <button onClick={() => handleConnect(platform.id)} disabled={isLoading} className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all disabled:opacity-50">
-                                                    {isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Link2 size={14} /> Mock Connect</>}
+                                                <button onClick={() => handleConnect(platform.id)} disabled={isConnecting} className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all disabled:opacity-50">
+                                                    {isConnecting ? <Loader2 size={16} className="animate-spin" /> : <><Link2 size={14} /> Mock Connect</>}
                                                 </button>
                                                 <div className="h-px bg-gray-200 my-2" />
                                                 <div className="flex gap-1">
