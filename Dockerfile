@@ -25,9 +25,9 @@ COPY packages /app/packages
 # Create necessary directories
 RUN mkdir -p /app/logs
 
-# Health check
+# Health check - use curl instead of python requests
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
 # Expose port
 EXPOSE 8000
