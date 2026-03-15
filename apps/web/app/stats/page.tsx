@@ -23,7 +23,11 @@ interface ActivityItem {
 export default function PublicStatsPage() {
     const [stats, setStats] = useState<GlobalStats | null>(null);
     const [activity, setActivity] = useState<ActivityItem[]>([]);
-    const API_URL = getApiUrl();
+    const API_URL = typeof window !== 'undefined'
+        ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : 'https://passive-income-application.onrender.com')
+        : 'https://passive-income-application.onrender.com';
 
     useEffect(() => {
         const fetchData = async () => {

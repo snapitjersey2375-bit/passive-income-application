@@ -169,7 +169,12 @@ export default function DashboardPage() {
         }
     };
 
-    const API_URL = getApiUrl();
+    // Production API URL - hardcoded for reliability on Vercel
+    const API_URL = typeof window !== 'undefined'
+        ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : 'https://passive-income-application.onrender.com')
+        : 'https://passive-income-application.onrender.com';
 
     const fetchQueue = async () => {
         setIsLoading(true);

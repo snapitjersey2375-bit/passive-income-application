@@ -16,7 +16,12 @@ export function ReferralLeaderboard() {
     useEffect(() => {
         const fetchLeaderboard = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/waitlist/leaderboard`);
+                const API_URL = typeof window !== 'undefined'
+                    ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                        ? 'http://localhost:8000'
+                        : 'https://passive-income-application.onrender.com')
+                    : 'https://passive-income-application.onrender.com';
+                const res = await fetch(`${API_URL}/waitlist/leaderboard`);
                 const data = await res.json();
                 setEntries(data.leaderboard || []);
             } catch (error) {

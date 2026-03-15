@@ -27,7 +27,11 @@ export default function WaitlistPage() {
     const [copied, setCopied] = useState(false);
     const [refCode, setRefCode] = useState<string | null>(null);
 
-    const API_URL = getApiUrl();
+    const API_URL = typeof window !== 'undefined'
+        ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : 'https://passive-income-application.onrender.com')
+        : 'https://passive-income-application.onrender.com';
 
     useEffect(() => {
         // Check URL for referral code
