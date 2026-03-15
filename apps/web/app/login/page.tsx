@@ -19,11 +19,10 @@ export default function LoginPage() {
         setError("");
 
         try {
-            // Use environment variable if set, otherwise use production backend for Vercel, or localhost for dev
-            const API_URL = process.env.NEXT_PUBLIC_API_URL ||
-                (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-                    ? "http://localhost:8000"
-                    : "https://passive-income-application.onrender.com");
+            // Production backend is on Render, dev uses localhost
+            const API_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+                ? "http://localhost:8000"
+                : "https://passive-income-application.onrender.com";
             const endpoint = isSignup ? "/auth/signup" : "/auth/login";
 
             let res;
