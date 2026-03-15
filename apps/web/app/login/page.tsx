@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { getApiUrl } from "@/lib/api-url";
 import { motion } from "framer-motion";
 
 export default function LoginPage() {
@@ -19,10 +20,7 @@ export default function LoginPage() {
         setError("");
 
         try {
-            // Production backend is on Render, dev uses localhost
-            const API_URL = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
-                ? "http://localhost:8000"
-                : "https://passive-income-application.onrender.com";
+            const API_URL = getApiUrl();
             const endpoint = isSignup ? "/auth/signup" : "/auth/login";
 
             let res;

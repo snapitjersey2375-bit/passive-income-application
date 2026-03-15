@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { DashboardShell } from "@repo/ui";
+import { getApiUrl } from "@/lib/api-url";
 import { Shield, Monitor, Key, Save, AlertCircle, Link2, Unlink, CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
@@ -34,7 +35,7 @@ export default function SettingsPage() {
     const [message, setMessage] = useState({ type: "", text: "" });
     const router = useRouter();
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const API_URL = getApiUrl();
 
     useEffect(() => {
         requireAuth();

@@ -21,6 +21,7 @@ import {
     RemixModal
 } from "@repo/ui";
 import { useAuth } from "@/hooks/use-auth";
+import { getApiUrl } from "@/lib/api-url";
 import { Check, X, Eye, Heart, MessageCircle, Share2, TrendingUp, Settings as SettingsIcon, LogOut, MessageSquare, Zap, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -168,7 +169,7 @@ export default function DashboardPage() {
         }
     };
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const API_URL = getApiUrl();
 
     const fetchQueue = async () => {
         setIsLoading(true);

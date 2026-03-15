@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { getApiUrl } from "@/lib/api-url";
 import { TrendingUp, Users, DollarSign, Activity, Zap, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
@@ -22,7 +23,7 @@ interface ActivityItem {
 export default function PublicStatsPage() {
     const [stats, setStats] = useState<GlobalStats | null>(null);
     const [activity, setActivity] = useState<ActivityItem[]>([]);
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const API_URL = getApiUrl();
 
     useEffect(() => {
         const fetchData = async () => {

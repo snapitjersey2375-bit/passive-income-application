@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getApiUrl } from "@/lib/api-url";
 import { Mail, ArrowRight, Users, Trophy, Copy, Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 
@@ -26,7 +27,7 @@ export default function WaitlistPage() {
     const [copied, setCopied] = useState(false);
     const [refCode, setRefCode] = useState<string | null>(null);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const API_URL = getApiUrl();
 
     useEffect(() => {
         // Check URL for referral code
