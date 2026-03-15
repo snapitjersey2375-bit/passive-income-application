@@ -85,7 +85,7 @@ export default function LoginPage() {
                             NexusFlow
                         </h1>
                         <p className="text-zinc-500 text-sm">
-                            Phase 2: Supervisor Authentication
+                            Phase 2: Supervisor Authentication [Deploy Ready]
                         </p>
                     </div>
 
