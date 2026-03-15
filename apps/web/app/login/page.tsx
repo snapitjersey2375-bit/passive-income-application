@@ -85,7 +85,7 @@ export default function LoginPage() {
                             NexusFlow
                         </h1>
                         <p className="text-zinc-500 text-sm">
-                            Phase 2: Supervisor Authentication [Deploy Ready]
+                            Phase 2: Supervisor Authentication ✅ LIVE DEMO ACTIVE
                         </p>
                     </div>
 
@@ -127,9 +127,9 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full py-3.5 bg-white text-black font-semibold rounded-xl hover:bg-zinc-200 active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+                            className="w-full py-3.5 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
                         >
-                            {isLoading ? "Authenticating..." : isSignup ? "Create Account" : "Enter Workspace"}
+                            {isLoading ? "Authenticating..." : isSignup ? "Create Account" : "🚀 Enter Workspace"}
                         </button>
 
                         <button
