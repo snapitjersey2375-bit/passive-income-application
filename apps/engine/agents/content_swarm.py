@@ -10,9 +10,8 @@ from .video_gen import VideoGenAgent
 from sqlalchemy.orm import Session
 
 class ContentSwarm(BaseAgent):
-    """
-    Agent responsible for finding and remixing video content.
-    """
+    """Agent responsible for finding and remixing video content."""
+
     def __init__(self):
         super().__init__(name="ContentSwarm")
         self.llm = LLMClient()
@@ -20,123 +19,86 @@ class ContentSwarm(BaseAgent):
         self.policy_agent = PolicyAgent()
         self.visualizer = VisualizerAgent()
         self.video_gen = VideoGenAgent()
-    
+
     async def run(self, context: Dict[str, Any]) -> Dict[str, Any]:
         self.log("Scouting for viral content...")
-        
         niche = context.get("niche", "general")
-        
-        # 1. Research Step
+
+        # 1. Research
         research_result = await self.researcher.run({"niche": niche})
         research_context = research_result.get("summary", "")
         self.log(f"Research gathered: {len(research_context)} chars")
 
-        # 1.5 Fetch User & Saturation Check (Niche Partitioning)
+        # 1.5 User & Saturation Check
         user_id = context.get("user_id")
         with Session(engine) as session:
-            # Saturation Check: Max 50 users per niche
             from sqlalchemy import func
-            active_users_in_niche = session.query(func.count(Content.user_id.distinct()))\
-                .filter(Content.niche == niche)\
-                .scalar()
-            
+            active_users_in_niche = session.query(func.count(Content.user_id.distinct())).filter(Content.niche == niche).scalar()
             if active_users_in_niche and active_users_in_niche >= 50:
-                self.log(f"⚠️ NICHE SATURATED: {niche} has {active_users_in_niche} users. Max 50.")
-                return {
-                    "status": "rejected",
-                    "reason": "Niche Saturated (Max 50 Users)",
-                    "suggestion": "Try 'Sub-Niche' or 'Blue Ocean' strategy."
-                }
-
+                self.log(f"NICHE SATURATED: {niche} has {active_users_in_niche} users.")
+                return {"status": "rejected", "reason": "Niche Saturated (Max 50 Users)"}
             user = session.query(User).filter(User.id == user_id).first() if user_id else session.query(User).first()
             if user and user.is_shadow_banned:
-                self.log(f"Wait... User {user.id} is SHADOW BANNED. simulating busy signal.")
-                return {
-                    "status": "error", 
-                    "reason": "System requires manual verification. Please contact support."
-                }
-                
+                return {"status": "error", "reason": "System requires manual verification."}
             risk_tolerance = user.risk_tolerance if user else 0.5
-            persona = user.persona if user and hasattr(user, 'persona') else "grandma"
+            persona = user.persona if user and hasattr(user, "persona") else "grandma"
             current_user_id = user.id if user else None
 
         # 2. Generate Idea
         idea = self.llm.generate_idea(niche=niche, context_data=research_context, risk_tolerance=risk_tolerance, persona=persona)
-        
-        # 3. Policy Check (Compliance filter)
-        policy_result = await self.policy_agent.run({
-            "title": idea["title"],
-            "description": idea["description"]
-        })
-        
-        # 4. Visualization Step - Requesting multiple images for scenes
+
+        # 3. Policy Check
+        policy_result = await self.policy_agent.run({"title": idea["title"], "description": idea["description"]})
+
+        # 4. Visualization
         scene_count = 4
-        viz_result = await self.visualizer.run({
-            "title": idea["title"],
-            "niche": niche,
-            "count": scene_count
-        })
+        viz_result = await self.visualizer.run({"title": idea["title"], "niche": niche, "count": scene_count})
         scene_images = viz_result.get("urls", [viz_result.get("thumbnail_url")] * scene_count)
 
-        # 5. Video Generation Step (HTML5) - Enhanced with unique visuals per scene
+        # 5. Video Generation
         scenes = [
             {"title": idea["title"], "body": idea["description"], "image": scene_images[0]},
             {"title": "The AI Advantage", "body": f"How {niche} is being disrupted by autonomous agents.", "image": scene_images[1]},
             {"title": "Monetization Path", "body": "Setting up the funnel: Ads, Referrals, and Scale.", "image": scene_images[2]},
-            {"title": "The Verdict", "body": f"Why this strategy in {niche} is a 2026 game-changer.", "image": scene_images[3]}
+            {"title": "The Verdict", "body": f"Why this strategy in {niche} is a 2026 game-changer.", "image": scene_images[3]},
         ]
-        
-        video_result = await self.video_gen.run({
-            "title": idea["title"],
-            "description": idea["description"],
-            "scenes": scenes,
-            "duration": 180 # 3 Minutes
-        })
-        
-        # Persist to DB & Enforce Policy
+        video_result = await self.video_gen.run({"title": idea["title"], "description": idea["description"], "scenes": scenes, "duration": 180})
+
+        # 5.5 Voiceover Generation (ElevenLabs)
+        try:
+            from apps.engine.core.tts_service import TTSService
+            script_text = idea.get("script_outline") or f"{idea['title']}. {idea['description']}"
+            audio_bytes, duration_min, tts_meta = TTSService.generate_speech(text=script_text, voice="rachel")
+            video_result["audio_bytes"] = audio_bytes
+            video_result["audio_duration_min"] = duration_min
+            self.log(f"Voiceover generated: {duration_min:.1f} min via {tts_meta['provider']}")
+        except Exception as tts_err:
+            self.log(f"Voiceover skipped: {tts_err}")
+
+        # 6. Persist to DB
         with Session(engine) as session:
-            # Re-fetch user to update policy stats if needed
             if current_user_id:
                 user = session.query(User).filter(User.id == current_user_id).first()
-            
             final_status = "pending_review"
-            
             if not policy_result["is_compliant"]:
-                self.log(f"❌ POLICY VIOLATION: {idea['title']}")
+                self.log(f"POLICY VIOLATION: {idea['title']}")
                 final_status = "rejected"
-                
                 if user:
                     user.policy_violation_count += 1
                     if user.policy_violation_count >= 3:
                         user.is_shadow_banned = True
-                        self.log(f"🚨 USER SHADOW BANNED: {user.email} (Violations: {user.policy_violation_count})")
-                    session.add(user) # Mark as modified
-            
+                    session.add(user)
             content = Content(
-                title=idea["title"],
-                description=idea["description"],
-                confidence_score=idea["confidence_score"],
-                status=final_status,
-                thumbnail_url=scene_images[0],
-                video_url=video_result["video_url"], # HTML5 Video URL
-                platform="tiktok",
-                # Niche Partitioning Fields
-                niche=niche,
-                user_id=current_user_id,
-                # New compliance fields
-                policy_status=policy_result["is_compliant"],
-                policy_reason=policy_result["reason"]
+                title=idea["title"], description=idea["description"],
+                confidence_score=idea["confidence_score"], status=final_status,
+                thumbnail_url=scene_images[0], video_url=video_result["video_url"],
+                platform="tiktok", niche=niche, user_id=current_user_id,
+                policy_status=policy_result["is_compliant"], policy_reason=policy_result["reason"],
             )
             session.add(content)
             session.commit()
             content_id = content.id
-            
-        self.log(f"Generated content: {idea['title']} (Status: {final_status})")
-        
-        return {
-            "content_id": content_id,
-            "title": idea["title"],
-            "status": final_status, 
-            "reason": policy_result["reason"],
-            "video_url": video_result["video_url"]
-        }
+
+        self.log(f"Generated: {idea['title']} (Status: {final_status})")
+        return {"content_id": content_id, "title": idea["title"], "status": final_status,
+                "reason": policy_result["reason"], "video_url": video_result["video_url"]}
