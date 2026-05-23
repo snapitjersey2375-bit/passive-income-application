@@ -1,0 +1,43 @@
+{
+  "org_id": 6925356,
+  "team_id": 2011811,
+  "scenarios": {
+    "voice_to_dropbox": {
+      "id": 4461143,
+      "description": "ElevenLabs TTS to Dropbox (CONFIRMED WORKING)",
+      "modules": [
+        {
+          "type": "http:ActionSendData",
+          "config": {
+            "url": "https://api.elevenlabs.io/v1/text-to-speech/{{voice_id}}",
+            "method": "POST",
+            "parseResponse": false,
+            "gzip": true,
+            "headers": {"xi-api-key": "{{elevenlabs_api_key}}"},
+            "body": {"text": "{{script}}", "model_id": "eleven_turbo_v2_5", "voice_settings": {"stability": 0.35, "similarity_boost": 0.85, "style": 0.4, "use_speaker_boost": true}}
+          }
+        },
+        {
+          "type": "dropbox:uploadLargeFile",
+          "config": {"connection_id": 7940989, "scoped": false, "path": "/PINEHOMELABS/REELS/POST1", "body": "{{1.data}}"}
+        }
+      ]
+    },
+    "voice_reel": {"id": 4460750, "description": "Full voice reel scenario (working)"}
+  },
+  "connections": {
+    "dropbox_full_access": {"id": 7940989, "scoped": false, "note": "USE THIS. Never use makeApiCall - routes to sandbox."},
+    "dropbox_scoped_post1": {"id": 7873401, "scoped": true, "note": "DO NOT USE for uploads - path_not_found errors."}
+  },
+  "elevenlabs": {
+    "key_id": 130752,
+    "voices": {
+      "rachel": {"id": "21m00Tcm4TlvDq8ikWAM", "stability": 0.35, "similarity_boost": 0.85, "style": 0.4},
+      "husband": {"id": "hirNNrNeVAwcLlSAF4cI", "stability": 0.4, "similarity_boost": 0.9, "style": 0.5, "note": "PineHomeLabs Husband Voice - fix ElevenLabs payment to use"}
+    }
+  },
+  "dropbox_paths": {
+    "reels_post1": "/PINEHOMELABS/REELS/POST1",
+    "WARNING": "MUST be exact all-caps. Any other casing = silent failure."
+  }
+}
